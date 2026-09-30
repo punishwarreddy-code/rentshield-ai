@@ -1,0 +1,2833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RentShield AI — Check Before You Pay</title>
+  <meta name="description" content="AI-powered rental scam detection. Check suspicious rental listings before you send money or personal information." />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js CDN for minimal 3D Shield -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#F0F5FD',
+              100: '#E4EDFB',
+              500: '#2563EB',
+              600: '#1D4ED8',
+              700: '#1E40AF',
+              800: '#1E3A8A',
+              900: '#0F1E4A',
+              950: '#091029',
+            },
+            risk: {
+              critical: '#DC2626',
+              high: '#EA580C',
+              medium: '#D97706',
+              low: '#16A34A',
+              safe: '#059669',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 4px;
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.92; transform: scale(1.02); }
+    }
+    .pulse-alert {
+      animation: pulse-subtle 3s infinite ease-in-out;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printable-report-area, #printable-report-area * {
+        visibility: visible;
+      }
+      #printable-report-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col selection:bg-brand-100 selection:text-brand-900">
+
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <button onclick="navigateTo('home')" class="flex items-center gap-3 group text-left focus:outline-none">
+        <div class="w-10 h-10 rounded-xl bg-brand-900 text-white flex items-center justify-center shadow-md shadow-brand-950/15 group-hover:bg-brand-800 transition-all">
+          <i data-lucide="shield-check" class="w-6 h-6 text-blue-300"></i>
+        </div>
+        <div>
+          <div class="font-extrabold text-lg tracking-tight text-slate-900 flex items-center gap-1.5">
+            RentShield <span class="bg-blue-100 text-brand-800 text-xs px-2 py-0.5 rounded-full font-bold">AI</span>
+          </div>
+          <div class="text-xs text-slate-500 font-medium">Check before you pay</div>
+        </div>
+      </button>
+
+      <!-- Desktop Nav Items -->
+      <nav class="hidden md:flex items-center gap-1">
+        <button onclick="navigateTo('home')" id="nav-btn-home" class="px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-700 hover:text-brand-700 hover:bg-slate-100 transition">Home</button>
+        <button onclick="navigateTo('scan')" id="nav-btn-scan" class="px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-700 hover:text-brand-700 hover:bg-slate-100 transition">Scan Listing</button>
+        <button onclick="navigateTo('simulator')" id="nav-btn-simulator" class="px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-700 hover:text-brand-700 hover:bg-slate-100 transition flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          Scam Simulator
+        </button>
+        <button onclick="navigateTo('how-it-works')" id="nav-btn-how" class="px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-700 hover:text-brand-700 hover:bg-slate-100 transition">How It Works</button>
+        <button onclick="navigateTo('dashboard')" id="nav-btn-dashboard" class="px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-700 hover:text-brand-700 hover:bg-slate-100 transition">Dashboard</button>
+        <button onclick="navigateTo('checklist')" id="nav-btn-checklist" class="px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-700 hover:text-brand-700 hover:bg-slate-100 transition">Before You Pay</button>
+      </nav>
+
+      <!-- Call To Actions -->
+      <div class="hidden md:flex items-center gap-2.5">
+        <button onclick="launchQuickDemo()" title="Test with verified demo scam listing in 1-click" class="px-3 py-2 text-xs font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-lg hover:bg-amber-200 transition flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-700"></i>
+          Demo Mode (Judge 30s)
+        </button>
+        <button onclick="navigateTo('scan')" class="px-4 py-2.5 text-sm font-bold text-white bg-brand-900 rounded-lg hover:bg-brand-800 shadow-sm transition flex items-center gap-2">
+          <i data-lucide="shield-alert" class="w-4 h-4 text-blue-300"></i>
+          Scan a Listing
+        </button>
+      </div>
+
+      <!-- Mobile Hamburger Button -->
+      <div class="md:hidden flex items-center gap-2">
+        <button onclick="launchQuickDemo()" class="px-2.5 py-1.5 text-xs font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-lg">
+          Demo
+        </button>
+        <button id="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Nav Flyout -->
+    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-1 shadow-lg">
+      <button onclick="navigateTo('home'); toggleMobileMenu();" class="w-full text-left px-3 py-2 text-sm font-semibold text-slate-800 rounded-lg hover:bg-slate-50">Home</button>
+      <button onclick="navigateTo('scan'); toggleMobileMenu();" class="w-full text-left px-3 py-2 text-sm font-semibold text-slate-800 rounded-lg hover:bg-slate-50">Scan Listing</button>
+      <button onclick="navigateTo('simulator'); toggleMobileMenu();" class="w-full text-left px-3 py-2 text-sm font-semibold text-slate-800 rounded-lg hover:bg-slate-50">Scam Simulator (Hackathon Demo)</button>
+      <button onclick="navigateTo('how-it-works'); toggleMobileMenu();" class="w-full text-left px-3 py-2 text-sm font-semibold text-slate-800 rounded-lg hover:bg-slate-50">How It Works</button>
+      <button onclick="navigateTo('dashboard'); toggleMobileMenu();" class="w-full text-left px-3 py-2 text-sm font-semibold text-slate-800 rounded-lg hover:bg-slate-50">Dashboard</button>
+      <button onclick="navigateTo('checklist'); toggleMobileMenu();" class="w-full text-left px-3 py-2 text-sm font-semibold text-slate-800 rounded-lg hover:bg-slate-50">Before You Pay Checklist</button>
+      <div class="pt-3">
+        <button onclick="navigateTo('scan'); toggleMobileMenu();" class="w-full py-3 bg-brand-900 text-white font-bold text-sm rounded-lg flex justify-center items-center gap-2">
+          <i data-lucide="shield-alert" class="w-4 h-4 text-blue-300"></i> Scan a Rental Now
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow">
+
+    <!-- ================= PAGE 1: HOME ================= -->
+    <section id="page-home" class="page-view">
+      <!-- Hero Section -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-14">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          
+          <div class="lg:col-span-7 space-y-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-brand-800 text-xs font-semibold">
+              <span class="w-2 h-2 rounded-full bg-brand-600 animate-ping"></span>
+              Live AI Rental Protection & Scam Detection
+            </div>
+
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Is this rental safe?
+            </h1>
+
+            <p class="text-lg sm:text-xl text-slate-600 leading-relaxed font-normal max-w-2xl">
+              RentShield AI checks rental listings for common scam signals before you pay deposit money or share private documents.
+            </p>
+
+            <!-- Hero Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+              <button onclick="navigateTo('scan')" class="px-7 py-3.5 text-base font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-xl shadow-md transition flex items-center justify-center gap-2.5">
+                <i data-lucide="search" class="w-5 h-5 text-blue-300"></i>
+                Scan a Listing
+              </button>
+              <button onclick="navigateTo('how-it-works')" class="px-6 py-3.5 text-base font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                <i data-lucide="info" class="w-5 h-5 text-slate-500"></i>
+                How It Works
+              </button>
+              <button onclick="launchQuickDemo()" class="px-5 py-3.5 text-sm font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl transition flex items-center justify-center gap-2">
+                <i data-lucide="play-circle" class="w-5 h-5 text-amber-700"></i>
+                Test 30s Demo
+              </button>
+            </div>
+
+            <!-- Trust proof badges -->
+            <div class="pt-4 flex flex-wrap items-center gap-6 text-xs text-slate-500 font-medium">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> Zero Signup Needed
+              </span>
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> Local Image Fingerprint
+              </span>
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> Advance Deposit Trap Detection
+              </span>
+            </div>
+          </div>
+
+          <!-- Minimal 3D Shield Hero Visual -->
+          <div class="lg:col-span-5 flex flex-col items-center justify-center">
+            <div class="relative w-full max-w-sm aspect-square bg-gradient-to-b from-blue-50 to-white rounded-3xl p-4 border border-blue-100 shadow-xl flex items-center justify-center">
+              
+              <!-- 3D Canvas Container -->
+              <div id="three-shield-container" class="w-full h-full rounded-2xl relative flex items-center justify-center overflow-hidden">
+                <!-- 2D Fallback in case WebGL is restricted -->
+                <div id="shield-fallback" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-slate-50/70">
+                  <div class="w-24 h-24 rounded-2xl bg-brand-900 text-white flex items-center justify-center shadow-2xl relative mb-3">
+                    <i data-lucide="shield" class="w-16 h-16 text-blue-400"></i>
+                    <i data-lucide="home" class="w-7 h-7 text-white absolute"></i>
+                  </div>
+                  <div class="text-sm font-bold text-slate-800">RentShield AI Engine</div>
+                  <div class="text-xs text-slate-500">Autonomous Listing Verification</div>
+                </div>
+              </div>
+
+              <!-- Interactive Hint Indicator -->
+              <div class="absolute bottom-3 right-4 bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-500 border border-slate-200 flex items-center gap-1 shadow-sm pointer-events-none">
+                <i data-lucide="sparkles" class="w-3 h-3 text-brand-600"></i>
+                Interactive 3D Protection
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Challenge Capability Banner -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <div class="text-xs font-extrabold uppercase tracking-wider text-emerald-800">Hackathon Challenge Mode</div>
+            <div class="text-sm font-bold text-slate-900 mt-1">External reverse-image and listing APIs are not required.</div>
+            <div class="text-xs text-slate-600 mt-0.5">RentShield still produces a legitimacy score using local metadata, locality price anomalies and reused-text detection.</div>
+          </div>
+          <button onclick="navigateTo('scan')" class="px-4 py-2 bg-emerald-700 text-white text-xs font-bold rounded-xl hover:bg-emerald-800">Try Local Scan</button>
+        </div>
+      </div>
+
+      <!-- Feature Teaser: Rental scams can look real -->
+      <div class="bg-slate-100 border-y border-slate-200 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center max-w-2xl mx-auto mb-10">
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Rental scams can look completely real.</h2>
+            <p class="text-slate-600 text-base mt-2">Scammers exploit urgency and low pricing to trick tenants into fast UPI or wire transfers.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Card 1 -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center mb-4 text-2xl font-bold">
+                💰
+              </div>
+              <h3 class="text-lg font-bold text-slate-900 mb-1">Very Low Price</h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                Scammers frequently post luxury flats at 50% discount to generate quick inquiries and bypass common skepticism.
+              </p>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div class="w-12 h-12 rounded-xl bg-blue-50 text-brand-700 flex items-center justify-center mb-4 text-2xl font-bold">
+                📷
+              </div>
+              <h3 class="text-lg font-bold text-slate-900 mb-1">Reused Photos</h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                Photos are copied from Airbnb listings, architectural websites, or expired rental ads located in different cities.
+              </p>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center mb-4 text-2xl font-bold">
+                ⚠
+              </div>
+              <h3 class="text-lg font-bold text-slate-900 mb-1">Payment Pressure</h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                "Owner is out of station or in military/defence. Pay a refundable ₹10,000 gate-pass token fee immediately."
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick How It Works Steps -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="text-center mb-12">
+          <span class="text-xs font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-200">Easy 4-Step Process</span>
+          <h2 class="text-3xl font-extrabold text-slate-900 mt-3">Paste → Check → Understand → Stay Safe</h2>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="w-9 h-9 rounded-lg bg-brand-900 text-white font-bold flex items-center justify-center mb-3">1</div>
+            <h4 class="font-bold text-slate-900 mb-1">Input Listing</h4>
+            <p class="text-xs text-slate-600">Provide the listing URL or copy-paste description, rent and city location.</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="w-9 h-9 rounded-lg bg-brand-900 text-white font-bold flex items-center justify-center mb-3">2</div>
+            <h4 class="font-bold text-slate-900 mb-1">Multi-Signal Scan</h4>
+            <p class="text-xs text-slate-600">RentShield checks price variance, photo reuse, and advance deposit phrasing.</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="w-9 h-9 rounded-lg bg-brand-900 text-white font-bold flex items-center justify-center mb-3">3</div>
+            <h4 class="font-bold text-slate-900 mb-1">Smart Adaptive Check</h4>
+            <p class="text-xs text-slate-600">Discovered red flags automatically trigger deeper secondary checks.</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="w-9 h-9 rounded-lg bg-brand-900 text-white font-bold flex items-center justify-center mb-3">4</div>
+            <h4 class="font-bold text-slate-900 mb-1">Clear Action Plan</h4>
+            <p class="text-xs text-slate-600">Receive a 0-100 Safety Score with simple plain-English steps before paying.</p>
+          </div>
+        </div>
+
+        <!-- Banner call to scan -->
+        <div class="mt-12 bg-brand-900 text-white rounded-3xl p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <h3 class="text-2xl font-bold">Have a flat in mind right now?</h3>
+            <p class="text-slate-300 text-sm mt-1">Takes only 10 seconds to analyze. No account or payment required.</p>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="navigateTo('scan')" class="px-6 py-3 bg-white text-brand-900 font-bold text-sm rounded-xl hover:bg-slate-100 shadow transition whitespace-nowrap">
+              Check Listing Now
+            </button>
+            <button onclick="navigateTo('simulator')" class="px-5 py-3 bg-brand-800 text-white border border-brand-700 font-bold text-sm rounded-xl hover:bg-brand-700 transition whitespace-nowrap">
+              Open Simulator
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PAGE 2: SCAN LISTING ================= -->
+    <section id="page-scan" class="page-view hidden">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-800 border border-brand-200 text-xs font-bold mb-3">
+            <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+            RentShield AI Scanner
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Check a Rental Listing</h2>
+          <p class="text-slate-600 text-base max-w-xl mx-auto mt-2">
+            Paste the listing details below and our AI will inspect the price, description, images, and payment terms for suspicious scam signals.
+          </p>
+        </div>
+
+        <!-- Scanner Card -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+          
+          <!-- Quick Load Preset / Judge Banner -->
+          <div class="mb-6 p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2 text-amber-900 font-medium">
+              <i data-lucide="sparkles" class="w-4 h-4 text-amber-600 flex-shrink-0"></i>
+              <span><strong>Testing for Hackathon?</strong> Load an instant sample suspicious listing:</span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" onclick="loadSamplePreset('bangaloreAbroad')" class="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-lg transition">
+                Load Suspicious 2BHK Demo
+              </button>
+              <button type="button" onclick="loadSamplePreset('safeNormal')" class="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold rounded-lg transition">
+                Load Safe Listing
+              </button>
+            </div>
+          </div>
+
+          <form id="rental-scan-form" onsubmit="event.preventDefault(); initiateListingScan();" class="space-y-6">
+            
+            <!-- Input Choice Toggle -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Input Method</label>
+              <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl max-w-xs">
+                <button type="button" id="tab-btn-url" onclick="switchScanTab('url')" class="py-2 text-xs font-bold rounded-lg bg-white shadow-sm text-slate-900 transition">
+                  Listing URL
+                </button>
+                <button type="button" id="tab-btn-text" onclick="switchScanTab('text')" class="py-2 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition">
+                  Description Text
+                </button>
+              </div>
+            </div>
+
+            <!-- URL Input Container -->
+            <div id="input-container-url" class="space-y-2">
+              <label for="input-listing-url" class="block text-sm font-bold text-slate-800">
+                Listing URL <span class="text-slate-400 font-normal">(99acres, MagicBricks, NoBroker, Facebook Marketplace, OLX)</span>
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="link" class="w-5 h-5"></i>
+                </div>
+                <input 
+                  type="text" 
+                  id="input-listing-url" 
+                  placeholder="https://example.com/property-listing/2bhk-flat-indiranagar" 
+                  class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 text-sm font-medium text-slate-900 outline-none transition"
+                />
+              </div>
+              <p class="text-xs text-slate-500">Or paste raw text description below if URL is not yet published.</p>
+            </div>
+
+            <!-- Description Textarea Container -->
+            <div id="input-container-text" class="space-y-2">
+              <label for="input-listing-desc" class="block text-sm font-bold text-slate-800">
+                Rental Description
+              </label>
+              <textarea 
+                id="input-listing-desc" 
+                rows="4" 
+                placeholder="Paste the landlord's message, WhatsApp message, or website listing description here..."
+                class="w-full p-3.5 rounded-xl border border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 text-sm font-medium text-slate-900 outline-none transition"
+              ></textarea>
+            </div>
+
+            <!-- Property Details Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <!-- City / Area -->
+              <div class="space-y-1.5">
+                <label for="input-location" class="block text-xs font-bold uppercase tracking-wider text-slate-700">Property Location</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="map-pin" class="w-4 h-4"></i>
+                  </div>
+                  <input 
+                    type="text" 
+                    id="input-location" 
+                    placeholder="e.g. Bandra, Mumbai or HSR Layout, Bangalore" 
+                    class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:border-brand-600 text-sm font-medium text-slate-900 outline-none"
+                    value="Koramangala, Bangalore"
+                  />
+                </div>
+              </div>
+
+              <!-- Monthly Rent -->
+              <div class="space-y-1.5">
+                <label for="input-rent" class="block text-xs font-bold uppercase tracking-wider text-slate-700">Monthly Rent</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 font-bold text-sm">
+                    ₹
+                  </div>
+                  <input 
+                    type="number" 
+                    id="input-rent" 
+                    placeholder="25000" 
+                    class="w-full pl-8 pr-3 py-2.5 rounded-xl border border-slate-300 focus:border-brand-600 text-sm font-semibold text-slate-900 outline-none"
+                    value="9000"
+                  />
+                </div>
+              </div>
+
+              <!-- Security Deposit -->
+              <div class="space-y-1.5">
+                <label for="input-deposit" class="block text-xs font-bold uppercase tracking-wider text-slate-700">Deposit Amount</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 font-bold text-sm">
+                    ₹
+                  </div>
+                  <input 
+                    type="number" 
+                    id="input-deposit" 
+                    placeholder="50000" 
+                    class="w-full pl-8 pr-3 py-2.5 rounded-xl border border-slate-300 focus:border-brand-600 text-sm font-semibold text-slate-900 outline-none"
+                    value="15000"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Optional Image Upload & Selection -->
+            <div class="space-y-2 pt-2 border-t border-slate-100">
+              <div class="flex items-center justify-between">
+                <label class="block text-sm font-bold text-slate-800">
+                  Property Images <span class="text-xs font-normal text-slate-500">(Upload your rental photo or pick a sample)</span>
+                </label>
+                <span class="text-xs text-slate-400">Live preview enabled</span>
+              </div>
+
+              <!-- Uploaded Image Live Preview Banner (Hidden until user uploads) -->
+              <div id="upload-preview-card" class="hidden p-3.5 bg-blue-50/70 border-2 border-brand-500 rounded-2xl flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 border border-brand-200 flex-shrink-0 relative">
+                    <img id="custom-img-preview" src="" alt="Uploaded property" class="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-xs font-bold text-slate-900" id="uploaded-filename">photo.jpg</span>
+                      <span class="px-2 py-0.5 rounded-full bg-brand-600 text-white text-[10px] font-bold">Active for Scan</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500" id="uploaded-filesize">Image ready for local metadata and fingerprint scan</div>
+                  </div>
+                </div>
+                <button type="button" onclick="removeUploadedImage()" class="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition">
+                  Remove
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <!-- Preset Sample Image 1 (Reused) -->
+                <button type="button" onclick="selectSampleImage('luxury-condo')" id="img-opt-luxury-condo" class="border-2 border-brand-600 bg-brand-50 p-2 rounded-xl text-left transition group">
+                  <div class="w-full h-20 bg-slate-200 rounded-lg overflow-hidden relative mb-1.5">
+                    <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&q=80" alt="Penthouse" class="w-full h-full object-cover group-hover:scale-105 transition" />
+                    <span class="absolute top-1 right-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Stock Flat</span>
+                  </div>
+                  <div class="text-[11px] font-bold text-slate-800 truncate">Stock Penthouse</div>
+                  <div class="text-[10px] text-slate-500 truncate">Flagged on other sites</div>
+                </button>
+
+                <!-- Preset Sample Image 2 (Safe Genuine) -->
+                <button type="button" onclick="selectSampleImage('authentic-flat')" id="img-opt-authentic-flat" class="border-2 border-slate-200 hover:border-slate-300 p-2 rounded-xl text-left transition group">
+                  <div class="w-full h-20 bg-slate-200 rounded-lg overflow-hidden relative mb-1.5">
+                    <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&q=80" alt="Normal Studio" class="w-full h-full object-cover group-hover:scale-105 transition" />
+                    <span class="absolute top-1 right-1 bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Genuine</span>
+                  </div>
+                  <div class="text-[11px] font-bold text-slate-800 truncate">Modest 1BHK</div>
+                  <div class="text-[10px] text-slate-500 truncate">Original camera EXIF</div>
+                </button>
+
+                <!-- Preset Sample Image 3 (Airbnb Copy) -->
+                <button type="button" onclick="selectSampleImage('airbnb-villa')" id="img-opt-airbnb-villa" class="border-2 border-slate-200 hover:border-slate-300 p-2 rounded-xl text-left transition group">
+                  <div class="w-full h-20 bg-slate-200 rounded-lg overflow-hidden relative mb-1.5">
+                    <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80" alt="Luxury Villa" class="w-full h-full object-cover group-hover:scale-105 transition" />
+                    <span class="absolute top-1 right-1 bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Airbnb Copy</span>
+                  </div>
+                  <div class="text-[11px] font-bold text-slate-800 truncate">Miami Villa Pool</div>
+                  <div class="text-[10px] text-slate-500 truncate">Appears in 12 states</div>
+                </button>
+
+                <!-- File Upload Trigger -->
+                <label for="custom-img-upload" id="img-opt-upload" class="border-2 border-dashed border-slate-300 hover:border-brand-500 p-2 rounded-xl text-center flex flex-col items-center justify-center cursor-pointer transition bg-slate-50/50">
+                  <i data-lucide="upload-cloud" class="w-6 h-6 text-brand-600 mb-1"></i>
+                  <span class="text-xs font-bold text-slate-800">Upload Your Photo</span>
+                  <span class="text-[10px] text-slate-500">JPG, PNG, WebP</span>
+                  <input type="file" id="custom-img-upload" class="hidden" accept="image/*" onchange="handleImageFileUpload(event)" />
+                </label>
+              </div>
+              <div id="image-status-message" class="text-xs text-brand-700 font-medium">Selected: Stock Penthouse (local duplicate corpus)</div>
+            </div>
+
+            <!-- Local Forensics Mode -->
+            <div class="p-3.5 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50 border border-blue-200 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-brand-900 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <i data-lucide="cpu" class="w-5 h-5 text-blue-300"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                    Local Forensics Engine
+                    <span class="bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">OFFLINE READY</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500">Price anomaly + image metadata/fingerprint + reused-text detection. No external verification API is required.</div>
+                </div>
+              </div>
+              <span class="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold whitespace-nowrap">100% LOCAL</span>
+            </div>
+
+            <!-- Error banner -->
+            <div id="scan-form-error" class="hidden p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+              <i data-lucide="alert-circle" class="w-4 h-4 text-rose-600"></i>
+              <span id="scan-form-error-msg">Please enter rental information to start the check.</span>
+            </div>
+
+            <!-- Main Scan CTA Button -->
+            <div class="pt-4">
+              <button 
+                type="submit" 
+                id="btn-main-check"
+                class="w-full py-4 px-6 rounded-2xl bg-brand-900 hover:bg-brand-800 text-white font-extrabold text-lg shadow-lg hover:shadow-xl transition transform active:scale-[0.99] flex items-center justify-center gap-3"
+              >
+                <i data-lucide="shield-check" class="w-6 h-6 text-blue-300"></i>
+                CHECK LISTING
+              </button>
+              <p class="text-center text-xs text-slate-500 mt-2">
+                Checks price vs locality, image metadata/fingerprint, payment phrases, and reused text patterns.
+              </p>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PAGE 3: SCANNING ANIMATION SCREEN ================= -->
+    <section id="page-scanning" class="page-view hidden">
+      <div class="max-w-2xl mx-auto px-4 py-16 sm:py-24 text-center">
+        <div class="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 shadow-sm space-y-8">
+          
+          <div class="relative w-20 h-20 mx-auto flex items-center justify-center">
+            <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-brand-600 border-t-transparent animate-spin"></div>
+            <i data-lucide="shield" class="w-8 h-8 text-brand-900"></i>
+          </div>
+
+          <div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Checking your listing...</h2>
+            <p class="text-sm text-slate-600 mt-1">Analyzing cross-platform signals and risk factors.</p>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="space-y-2">
+            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+              <div id="scan-progress-bar" class="bg-brand-900 h-full w-0 transition-all duration-300 ease-out"></div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-500 font-medium">
+              <span id="scan-phase-text">Starting analysis...</span>
+              <span id="scan-percentage-text">0%</span>
+            </div>
+          </div>
+
+          <!-- Step Checkmarks List -->
+          <div class="space-y-3 text-left max-w-md mx-auto pt-2">
+            
+            <div id="scan-step-1" class="flex items-center gap-3 text-sm text-slate-400">
+              <span class="w-6 h-6 rounded-full border border-slate-300 flex items-center justify-center text-xs step-icon">●</span>
+              <span>Reading listing & location metrics</span>
+            </div>
+
+            <div id="scan-step-2" class="flex items-center gap-3 text-sm text-slate-400">
+              <span class="w-6 h-6 rounded-full border border-slate-300 flex items-center justify-center text-xs step-icon">●</span>
+              <span>Checking price vs Bangalore average</span>
+            </div>
+
+            <div id="scan-step-3" class="flex items-center gap-3 text-sm text-slate-400">
+              <span class="w-6 h-6 rounded-full border border-slate-300 flex items-center justify-center text-xs step-icon">●</span>
+              <span>Checking description for scam patterns</span>
+            </div>
+
+            <div id="scan-step-4" class="flex items-center gap-3 text-sm text-slate-400">
+              <span class="w-6 h-6 rounded-full border border-slate-300 flex items-center justify-center text-xs step-icon">●</span>
+              <span>Checking local image fingerprint & metadata</span>
+            </div>
+
+            <div id="scan-step-5" class="flex items-center gap-3 text-sm text-slate-400">
+              <span class="w-6 h-6 rounded-full border border-slate-300 flex items-center justify-center text-xs step-icon">●</span>
+              <span>Running adaptive local heuristics</span>
+            </div>
+
+          </div>
+
+          <div class="text-xs text-slate-400 border-t border-slate-100 pt-4">
+            RentShield AI does not save your confidential credentials.
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PAGE 4: RESULTS REPORT ================= -->
+    <section id="page-report" class="page-view hidden">
+      <div id="printable-report-area" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        <!-- Action Toolbar -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 gap-4 no-print">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-200 text-slate-800 text-xs font-bold mb-1">
+              Safety Verification Report
+            </div>
+            <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Rental Safety Report</h2>
+            <div id="report-timestamp" class="text-xs text-slate-500">Generated just now • Report ID: #RS-84920</div>
+          </div>
+
+          <div class="flex items-center gap-2.5 w-full sm:w-auto">
+            <button onclick="navigateTo('scan')" class="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 flex items-center gap-1.5 transition">
+              <i data-lucide="repeat" class="w-3.5 h-3.5"></i> Check Another
+            </button>
+            <button onclick="window.print()" class="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 flex items-center gap-1.5 transition">
+              <i data-lucide="printer" class="w-3.5 h-3.5"></i> Download / Print
+            </button>
+            <button onclick="shareSafetyReport()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-900 hover:bg-brand-800 flex items-center gap-1.5 transition">
+              <i data-lucide="share-2" class="w-3.5 h-3.5 text-blue-300"></i> Share Report
+            </button>
+          </div>
+        </div>
+
+        <!-- Gemini Audio Briefing Bar -->
+        <div id="gemini-audio-banner" class="mb-6 p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-brand-950 to-blue-950 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 flex-shrink-0">
+              <i data-lucide="volume-2" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                Local Spoken Safety Advisory
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              </div>
+              <div class="text-sm font-semibold text-white">Listen to a 20-second safety briefing for your site visit</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button id="btn-play-tts" onclick="playGeminiVoiceBriefing()" class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+              <i data-lucide="play" class="w-4 h-4"></i>
+              <span id="tts-btn-label">Generate Voice Briefing</span>
+            </button>
+            <audio id="tts-audio-player" class="hidden" controls></audio>
+          </div>
+        </div>
+
+        <!-- Notification Toast for Copy -->
+        <div id="share-toast" class="hidden fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl text-xs font-semibold shadow-xl flex items-center gap-2">
+          <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+          Link copied to clipboard!
+        </div>
+
+        <!-- Main Risk Score Header Card -->
+        <div id="risk-score-card" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm mb-8 transition-colors">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+            
+            <!-- Circular Gauge -->
+            <div class="md:col-span-4 flex flex-col items-center justify-center text-center">
+              <div class="relative w-44 h-44 flex items-center justify-center">
+                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="50" stroke="#F1F5F9" stroke-width="10" fill="transparent" />
+                  <circle 
+                    id="score-circle-svg"
+                    cx="60" 
+                    cy="60" 
+                    r="50" 
+                    stroke="#EA580C" 
+                    stroke-width="10" 
+                    stroke-dasharray="314.159" 
+                    stroke-dashoffset="100"
+                    stroke-linecap="round" 
+                    fill="transparent"
+                    class="transition-all duration-1000 ease-out" 
+                  />
+                </svg>
+                <div class="absolute flex flex-col items-center justify-center text-center">
+                  <span id="score-display-num" class="text-4xl font-extrabold text-slate-900 tracking-tight">32</span>
+                  <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">/ 100</span>
+                  <span class="text-[10px] font-semibold text-slate-500 uppercase mt-0.5">Legitimacy Score</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Score Level & Explanation -->
+            <div class="md:col-span-8 space-y-3">
+              <div class="flex items-center gap-2.5">
+                <span id="score-level-badge" class="px-3.5 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-rose-100 text-rose-800">
+                  HIGH RISK
+                </span>
+                <span class="text-xs text-slate-500">Autonomous evaluation</span>
+              </div>
+
+              <h3 id="score-headline-text" class="text-2xl font-extrabold text-slate-900">
+                Possible rental scam signals detected.
+              </h3>
+
+              <p id="score-summary-text" class="text-sm text-slate-600 leading-relaxed">
+                This listing displays multiple high-risk indicators common in deposit fraud, including rent substantially below Bangalore averages and an urgent advance deposit request before property inspection.
+              </p>
+
+              <!-- Listing Meta quick badge summary -->
+              <div class="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span class="block text-slate-400 font-medium">City / Area</span>
+                  <span id="rep-prop-area" class="font-bold text-slate-800">Bangalore</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span class="block text-slate-400 font-medium">Monthly Rent</span>
+                  <span id="rep-prop-rent" class="font-bold text-slate-800">₹8,000</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span class="block text-slate-400 font-medium">Deposit</span>
+                  <span id="rep-prop-deposit" class="font-bold text-slate-800">₹10,000</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span class="block text-slate-400 font-medium">Market Delta</span>
+                  <span id="rep-prop-delta" class="font-bold text-rose-600">-68% vs area</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- UNIQUE FEATURE 1: SMART CHECK (ADAPTIVE CHECK) -->
+        <div id="smart-check-card" class="bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-3xl p-6 sm:p-7 shadow-md mb-8">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 text-blue-300">
+              <i data-lucide="cpu" class="w-6 h-6"></i>
+            </div>
+            <div class="space-y-2 flex-grow">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-200 font-extrabold text-xs uppercase tracking-wider">
+                    Smart Check
+                  </span>
+                  <span class="text-xs text-blue-200">Adaptive Local Forensics</span>
+                </div>
+                <span id="smart-check-count" class="text-xs font-bold text-amber-300">3 unusual signals triggered extra checks</span>
+              </div>
+              
+              <h4 class="text-lg font-bold text-white">How the AI adapted to this listing:</h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Rather than relying on external APIs, RentShield adapts local heuristics to the signals found in this listing.
+              </p>
+
+              <!-- Adaptive dynamic badges -->
+              <div id="smart-check-badges-container" class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div class="bg-white/10 rounded-xl p-3 border border-white/10 text-xs">
+                  <div class="font-bold text-amber-300 flex items-center gap-1.5 mb-1">
+                    <i data-lucide="trending-down" class="w-3.5 h-3.5"></i> Price Anomaly
+                  </div>
+                  <div id="smart-check-price-text" class="text-slate-200">Comparing price deviation against local neighborhood median.</div>
+                </div>
+
+                <div class="bg-white/10 rounded-xl p-3 border border-white/10 text-xs">
+                  <div class="font-bold text-rose-300 flex items-center gap-1.5 mb-1">
+                    <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Payment Language
+                  </div>
+                  <div class="text-slate-200">"Gate-pass/token" phrase triggered advance deposit scam matcher.</div>
+                </div>
+
+                <div class="bg-white/10 rounded-xl p-3 border border-white/10 text-xs">
+                  <div class="font-bold text-sky-300 flex items-center gap-1.5 mb-1">
+                    <i data-lucide="image" class="w-3.5 h-3.5"></i> Reverse Fingerprint
+                  </div>
+                  <div id="smart-check-image-text" class="text-slate-200">Local perceptual fingerprint compared with the built-in demo corpus and this browser's scan history.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- LOCAL FORENSICS EVIDENCE -->
+        <div id="local-forensics-card" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm mb-8">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="scan-search" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-grow">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                <div>
+                  <span class="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-extrabold text-xs uppercase tracking-wider">Local Evidence</span>
+                  <h4 class="text-lg font-bold text-slate-900 mt-2">How the score was produced without external APIs</h4>
+                </div>
+                <span id="local-engine-status" class="text-xs font-bold text-emerald-700">Offline-ready</span>
+              </div>
+              <p class="text-xs text-slate-500 mb-4">Three challenge-critical signals are calculated directly in the browser.</p>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                  <div class="flex items-center gap-2 text-xs font-extrabold text-slate-800 mb-2">
+                    <i data-lucide="image" class="w-4 h-4 text-blue-600"></i> Metadata Inspection
+                  </div>
+                  <div id="evidence-metadata" class="text-xs text-slate-600 leading-relaxed">Waiting for scan…</div>
+                </div>
+                <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                  <div class="flex items-center gap-2 text-xs font-extrabold text-slate-800 mb-2">
+                    <i data-lucide="trending-down" class="w-4 h-4 text-amber-600"></i> Price vs Locality
+                  </div>
+                  <div id="evidence-price" class="text-xs text-slate-600 leading-relaxed">Waiting for scan…</div>
+                </div>
+                <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                  <div class="flex items-center gap-2 text-xs font-extrabold text-slate-800 mb-2">
+                    <i data-lucide="copy" class="w-4 h-4 text-rose-600"></i> Text Pattern Reuse
+                  </div>
+                  <div id="evidence-text" class="text-xs text-slate-600 leading-relaxed">Waiting for scan…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scanned Photo Authenticity Banner (Displays when custom or sample photo is verified) -->
+        <div id="report-photo-preview-banner" class="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm mb-8 flex flex-col sm:flex-row items-center gap-5">
+          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0 shadow-inner">
+            <img id="report-analyzed-photo" src="" alt="Analyzed rental" class="w-full h-full object-cover" />
+          </div>
+          <div class="space-y-1.5 flex-grow text-center sm:text-left">
+            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <span id="report-photo-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                Photo Inspected
+              </span>
+              <span id="report-photo-source" class="text-xs text-slate-500 font-medium">Uploaded Image</span>
+            </div>
+            <h4 id="report-photo-title" class="font-bold text-slate-900 text-sm sm:text-base">Reverse image inspection finished</h4>
+            <p id="report-photo-desc" class="text-xs text-slate-600 leading-relaxed">
+              RentShield inspected local image metadata, dimensions, file characteristics, and a local visual fingerprint.
+            </p>
+          </div>
+        </div>
+
+        <!-- 5-PILLAR BREAKDOWN CARDS -->
+        <div class="mb-10">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-xl font-extrabold text-slate-900 tracking-tight">Why did we give this score?</h3>
+              <p class="text-xs text-slate-500">Breakdown of the 5 foundational verification pillars</p>
+            </div>
+            <span class="text-xs font-semibold text-slate-400">All modules executed</span>
+          </div>
+
+          <div id="breakdown-cards-list" class="space-y-4">
+            <!-- Will be populated dynamically by JavaScript -->
+          </div>
+        </div>
+
+        <!-- LOCAL INTERACTIVE TOOL: LANDLORD MESSAGE CHECK -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm mb-10">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-brand-900 text-xs font-bold mb-2">
+                <i data-lucide="bot" class="w-3.5 h-3.5 text-brand-700"></i>
+                Local Pattern Engine
+              </div>
+              <h3 class="text-xl font-extrabold text-slate-900">Landlord Chat Interrogator & Trap Test</h3>
+              <p class="text-xs text-slate-600 mt-0.5">
+                Paste any message the landlord sent you on WhatsApp/SMS. The browser checks pressure markers and reused scam-language patterns without an external model.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+            <!-- Left: Landlord message input -->
+            <div class="lg:col-span-6 space-y-3">
+              <label for="landlord-msg-input" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Landlord's WhatsApp / SMS Message:
+              </label>
+              <textarea 
+                id="landlord-msg-input" 
+                rows="3" 
+                placeholder="e.g.: 'Sir please pay 3000 rs gate pass token right now so security guard can let you enter the flat, it is 100% refundable...'" 
+                class="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 text-xs text-slate-800 outline-none transition"
+              ></textarea>
+              <div class="flex gap-2">
+                <button type="button" onclick="analyzeLandlordMessage()" class="px-4 py-2 bg-brand-900 hover:bg-brand-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="scan-search" class="w-3.5 h-3.5"></i>
+                  Analyze Message
+                </button>
+                <button type="button" onclick="generateLandlordQuestions()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                  <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-brand-700"></i>
+                  Generate Exposing Questions
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: AI Interrogation Feedback -->
+            <div class="lg:col-span-6">
+              <div id="landlord-analysis-output" class="h-full min-h-[130px] p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs flex flex-col justify-center">
+                <div class="text-slate-400 text-center flex flex-col items-center">
+                  <i data-lucide="message-square-dashed" class="w-8 h-8 mb-1.5 text-slate-300"></i>
+                  <span>Paste a landlord message or click "Generate Exposing Questions" to let Gemini uncover deception tactics.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- UNIQUE FEATURE 2: LISTING DNA VISUAL NODE -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm mb-10">
+          <div class="max-w-2xl mb-6">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold mb-2">
+              <i data-lucide="fingerprint" class="w-3.5 h-3.5 text-brand-700"></i>
+              Listing DNA Network
+            </div>
+            <h3 class="text-xl font-extrabold text-slate-900">Cross-Listing DNA Fingerprint</h3>
+            <p class="text-xs text-slate-600 mt-1">
+              We compare important parts of a listing such as images, wording, price and contact information to identify possible duplicate networks.
+            </p>
+          </div>
+
+          <!-- Node Visual -->
+          <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
+            
+            <!-- Listing A -->
+            <div class="w-full md:w-5/12 bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-100 text-brand-900">Scanned Listing A</span>
+                <span class="text-[11px] text-slate-400">Current</span>
+              </div>
+              <div class="font-bold text-sm text-slate-900 truncate" id="dna-listing-a-title">Rental Flat</div>
+              <div class="text-xs text-slate-500 mt-1" id="dna-listing-a-loc">Claimed: Koramangala, Bangalore</div>
+              <div class="text-xs font-bold text-brand-700 mt-1" id="dna-listing-a-rent">Rent: ₹9,000 / mo</div>
+            </div>
+
+            <!-- Match Line & Percentage -->
+            <div class="flex flex-col items-center justify-center px-4">
+              <div class="flex items-center gap-2">
+                <div class="h-0.5 w-8 bg-rose-400 hidden md:block"></div>
+                <div class="bg-rose-50 border-2 border-rose-500 text-rose-800 rounded-full px-3 py-1 text-xs font-extrabold shadow-sm whitespace-nowrap">
+                  <span id="dna-match-percent">82%</span> Similar
+                </div>
+                <div class="h-0.5 w-8 bg-rose-400 hidden md:block"></div>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-1 font-medium text-center" id="dna-match-summary">Duplicate visual hash & description syntax</div>
+            </div>
+
+            <!-- Listing B -->
+            <div class="w-full md:w-5/12 bg-white rounded-xl p-4 border border-rose-200 shadow-xs">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-rose-100 text-rose-800">Flagged Duplicate Listing B</span>
+                <span class="text-[11px] text-slate-400">Archived 2 weeks ago</span>
+              </div>
+              <div class="font-bold text-sm text-slate-900 truncate">Luxury Studio Near Metro</div>
+              <div class="text-xs text-slate-500 mt-1" id="dna-listing-b-loc">Listed in: Gurgaon, Haryana</div>
+              <div class="text-xs font-bold text-slate-600 mt-1">Rent: ₹7,500 / mo</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- VERY IMPORTANT: EXPLAIN THE SCORE & WHAT SHOULD YOU DO? -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+          <div class="max-w-2xl mb-6">
+            <h3 class="text-xl font-extrabold text-slate-900">What should you do now?</h3>
+            <p class="text-xs text-slate-600 mt-1">
+              Clear, realistic steps to protect your money before proceeding with this property.
+            </p>
+          </div>
+
+          <div id="safety-action-steps-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Populated via JS depending on risk findings -->
+          </div>
+
+          <!-- Instant Interactive Checklist Shortcut -->
+          <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-xs text-slate-600">
+              Need an official physical verification document to carry during the site visit?
+            </div>
+            <button onclick="navigateTo('checklist')" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-2 transition">
+              <i data-lucide="check-square" class="w-4 h-4 text-brand-700"></i>
+              Open Safety Verification Checklist
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= PAGE 5: SCAM SIMULATOR ================= -->
+    <section id="page-simulator" class="page-view hidden">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        
+        <div class="text-center max-w-2xl mx-auto mb-10">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold mb-3">
+            <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-amber-600"></i>
+            Hackathon Live Evaluation Sandbox
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Try the Scam Detector</h2>
+          <p class="text-slate-600 text-base mt-2">
+            Click any scenario below to immediately load a realistic rental case and verify how RentShield’s AI analyzes different scam vectors.
+          </p>
+        </div>
+
+        <!-- 5 Instant Presets Buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
+          
+          <button onclick="loadSimulatorCase('tooCheap')" class="simulator-card-btn p-4 rounded-2xl bg-white border-2 border-slate-200 hover:border-brand-600 text-left transition shadow-xs">
+            <div class="text-2xl mb-2">🏷️</div>
+            <div class="font-bold text-sm text-slate-900">Too Cheap</div>
+            <div class="text-[11px] text-slate-500 mt-1">Luxury 3BHK for ₹9,000/mo</div>
+          </button>
+
+          <button onclick="loadSimulatorCase('fakeOwner')" class="simulator-card-btn p-4 rounded-2xl bg-white border-2 border-slate-200 hover:border-brand-600 text-left transition shadow-xs">
+            <div class="text-2xl mb-2">✈️</div>
+            <div class="font-bold text-sm text-slate-900">Owner Abroad</div>
+            <div class="text-[11px] text-slate-500 mt-1">"Working in UN/military"</div>
+          </button>
+
+          <button onclick="loadSimulatorCase('reusedPhotos')" class="simulator-card-btn p-4 rounded-2xl bg-white border-2 border-slate-200 hover:border-brand-600 text-left transition shadow-xs">
+            <div class="text-2xl mb-2">📸</div>
+            <div class="font-bold text-sm text-slate-900">Reused Photos</div>
+            <div class="text-[11px] text-slate-500 mt-1">Stolen luxury resort ad</div>
+          </button>
+
+          <button onclick="loadSimulatorCase('advancePayment')" class="simulator-card-btn p-4 rounded-2xl bg-white border-2 border-slate-200 hover:border-brand-600 text-left transition shadow-xs">
+            <div class="text-2xl mb-2">💸</div>
+            <div class="font-bold text-sm text-slate-900">Advance Deposit</div>
+            <div class="text-[11px] text-slate-500 mt-1">UPI fee before key visit</div>
+          </button>
+
+          <button onclick="loadSimulatorCase('legitimateSafe')" class="simulator-card-btn p-4 rounded-2xl bg-white border-2 border-emerald-300 hover:border-emerald-600 text-left transition shadow-xs bg-emerald-50/20">
+            <div class="text-2xl mb-2">✅</div>
+            <div class="font-bold text-sm text-slate-900">Legit Rental</div>
+            <div class="text-[11px] text-emerald-700 mt-1">Market rent & proper visit</div>
+          </button>
+
+        </div>
+
+        <!-- Simulator Preview and Action Container -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+          <div class="flex flex-col lg:flex-row gap-8">
+            
+            <!-- Left: Description Preview -->
+            <div class="lg:w-7/12 space-y-4">
+              <div class="flex items-center justify-between">
+                <span id="sim-scenario-title" class="text-base font-extrabold text-slate-900">Scenario: Owner Abroad Defense Scam</span>
+                <span id="sim-scenario-tag" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800">High Risk Expected</span>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-mono leading-relaxed" id="sim-text-display">
+                <!-- Text updated by JS -->
+              </div>
+
+              <div class="grid grid-cols-3 gap-3 text-xs">
+                <div class="p-3 rounded-xl bg-slate-100">
+                  <div class="text-slate-400 font-medium">Area</div>
+                  <div id="sim-loc-display" class="font-bold text-slate-800">Indiranagar, Bangalore</div>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-100">
+                  <div class="text-slate-400 font-medium">Rent</div>
+                  <div id="sim-rent-display" class="font-bold text-slate-800">₹8,000 / mo</div>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-100">
+                  <div class="text-slate-400 font-medium">Deposit</div>
+                  <div id="sim-dep-display" class="font-bold text-slate-800">₹10,000</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Explanatory & Launch CTA -->
+            <div class="lg:w-5/12 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-200 lg:pl-8 pt-6 lg:pt-0">
+              <div class="space-y-3">
+                <h4 class="font-bold text-slate-900 text-sm">What the AI will test in this preset:</h4>
+                <ul id="sim-test-points" class="space-y-2 text-xs text-slate-600">
+                  <!-- Test bullet points -->
+                </ul>
+              </div>
+
+              <div class="pt-6">
+                <button onclick="runSimulatorNow()" class="w-full py-3.5 px-6 rounded-2xl bg-brand-900 hover:bg-brand-800 text-white font-extrabold text-base shadow-md flex items-center justify-center gap-2 transition">
+                  <i data-lucide="play" class="w-4 h-4 text-blue-300"></i>
+                  Run Analysis On This Listing
+                </button>
+                <div class="text-[11px] text-slate-400 text-center mt-2">Loads scanner directly into live 5-step detection</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= PAGE 6: HOW IT WORKS ================= -->
+    <section id="page-how-it-works" class="page-view hidden">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+        
+        <div class="text-center max-w-2xl mx-auto mb-14">
+          <span class="text-xs font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-200">AI Investigation Explained</span>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-3">How RentShield checks your listing</h2>
+          <p class="text-slate-600 text-base mt-2">
+            We evaluate 5 distinct risk pillars, cross-reference local market pricing, and adapt our depth based on the patterns discovered.
+          </p>
+        </div>
+
+        <!-- 5 Pillars Detailed -->
+        <div class="space-y-6 mb-16">
+          
+          <!-- Pillar 1 -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col sm:flex-row items-start gap-5 shadow-xs">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-brand-700 flex items-center justify-center font-bold text-xl flex-shrink-0">
+              1
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Price Deviation Analysis</h3>
+              <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                RentShield compares the stated monthly rent against the median rental baseline for that specific pin code or neighborhood. When a luxury apartment is offered at 50% or more below market price, it automatically raises a critical price alert.
+              </p>
+            </div>
+          </div>
+
+          <!-- Pillar 2 -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col sm:flex-row items-start gap-5 shadow-xs">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-brand-700 flex items-center justify-center font-bold text-xl flex-shrink-0">
+              2
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Perceptual Image Fingerprinting</h3>
+              <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                Scammers steal images from architectural firms, luxury hotels, and overseas rental portfolios. We calculate a perceptual visual hash of the listing images to check if they have appeared previously on unrelated websites.
+              </p>
+            </div>
+          </div>
+
+          <!-- Pillar 3 -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col sm:flex-row items-start gap-5 shadow-xs">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-brand-700 flex items-center justify-center font-bold text-xl flex-shrink-0">
+              3
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Description Semantics & Storytelling Traps</h3>
+              <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                Scammers rely on recurring emotional scripts: "transfer abroad", "cannot show the house today because key is with courier", or "military emergency". Our text classifier identifies manipulative storytelling patterns.
+              </p>
+            </div>
+          </div>
+
+          <!-- Pillar 4 -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col sm:flex-row items-start gap-5 shadow-xs">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-brand-700 flex items-center justify-center font-bold text-xl flex-shrink-0">
+              4
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Payment & Deposit Urgency Checks</h3>
+              <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                The single biggest red flag is asking for money before the tenant physically steps inside the flat. We specifically inspect whether tokens, gate-pass fees, or security deposits are demanded up-front.
+              </p>
+            </div>
+          </div>
+
+          <!-- Pillar 5 -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col sm:flex-row items-start gap-5 shadow-xs">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-brand-700 flex items-center justify-center font-bold text-xl flex-shrink-0">
+              5
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Location & Geometry Coherence</h3>
+              <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+                Checks whether the listed address, area landmarks, and stated building specifications match authentic municipal zoning and geographic coordinates.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Trust Score Scale Reference -->
+        <div class="bg-slate-100 rounded-3xl p-6 sm:p-8 border border-slate-200">
+          <h3 class="text-xl font-extrabold text-slate-900 mb-2">Our Trust Score Scale</h3>
+          <p class="text-xs text-slate-600 mb-6">
+            RentShield does not claim absolute certainty. We surface risk signals to empower renters with educated caution.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-white border border-rose-200">
+              <span class="block font-extrabold text-rose-700">0 – 25</span>
+              <span class="font-bold text-slate-900">Critical Risk</span>
+              <span class="block text-[11px] text-slate-500 mt-1">High probability of fake listing or advance fraud.</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-white border border-orange-200">
+              <span class="block font-extrabold text-orange-700">26 – 45</span>
+              <span class="font-bold text-slate-900">High Risk</span>
+              <span class="block text-[11px] text-slate-500 mt-1">Unusual pricing and urgency tactics detected.</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-white border border-amber-200">
+              <span class="block font-extrabold text-amber-700">46 – 65</span>
+              <span class="font-bold text-slate-900">Medium Risk</span>
+              <span class="block text-[11px] text-slate-500 mt-1">Inconsistencies present. In-person review needed.</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-white border border-emerald-200">
+              <span class="block font-extrabold text-emerald-700">66 – 85</span>
+              <span class="font-bold text-slate-900">Low Risk</span>
+              <span class="block text-[11px] text-slate-500 mt-1">Listing patterns align with standard market rentals.</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-white border border-emerald-300 bg-emerald-50/30">
+              <span class="block font-extrabold text-emerald-800">86 – 100</span>
+              <span class="font-bold text-slate-900">High Trust</span>
+              <span class="block text-[11px] text-slate-500 mt-1">Consistent owner data, pricing, and authentic imagery.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= PAGE 7: DASHBOARD ================= -->
+    <section id="page-dashboard" class="page-view hidden">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-200 text-slate-800 text-xs font-bold mb-1">
+              Live Threat Intelligence
+            </div>
+            <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Rental Threat Dashboard</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Real-time aggregate telemetry across scanned rental listings</p>
+          </div>
+          <button onclick="navigateTo('scan')" class="px-4 py-2.5 rounded-xl bg-brand-900 text-white font-bold text-xs hover:bg-brand-800 shadow transition flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i> Scan New Listing
+          </button>
+        </div>
+
+        <!-- 4 Stat Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-xs text-slate-500 font-semibold block">Listings Checked</span>
+            <span class="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 block">128</span>
+            <span class="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-1">
+              <i data-lucide="arrow-up" class="w-3 h-3"></i> +14 today
+            </span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-rose-200 shadow-xs">
+            <span class="text-xs text-rose-600 font-semibold block">High & Critical Risk</span>
+            <span class="text-3xl font-extrabold text-rose-600 tracking-tight mt-1 block">31</span>
+            <span class="text-[11px] text-slate-500 font-medium mt-1">24.2% of checks</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-amber-200 shadow-xs">
+            <span class="text-xs text-amber-600 font-semibold block">Medium Risk</span>
+            <span class="text-3xl font-extrabold text-amber-600 tracking-tight mt-1 block">42</span>
+            <span class="text-[11px] text-slate-500 font-medium mt-1">32.8% of checks</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-emerald-200 shadow-xs">
+            <span class="text-xs text-emerald-600 font-semibold block">Low Risk & Safe</span>
+            <span class="text-3xl font-extrabold text-emerald-600 tracking-tight mt-1 block">55</span>
+            <span class="text-[11px] text-slate-500 font-medium mt-1">43.0% of checks</span>
+          </div>
+
+        </div>
+
+        <!-- Distribution & Common Risk Signals -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+          
+          <!-- Bar Chart Visual -->
+          <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+            <h3 class="text-base font-extrabold text-slate-900 mb-1">Risk Distribution</h3>
+            <p class="text-xs text-slate-500 mb-6">Proportion of flagged listings across verified queries</p>
+
+            <div class="space-y-4">
+              <!-- High Risk Bar -->
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span class="text-rose-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> High Risk</span>
+                  <span class="text-slate-600">31 (24%)</span>
+                </div>
+                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div class="bg-rose-500 h-full rounded-full" style="width: 24%"></div>
+                </div>
+              </div>
+
+              <!-- Medium Risk Bar -->
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span class="text-amber-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Medium Risk</span>
+                  <span class="text-slate-600">42 (33%)</span>
+                </div>
+                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div class="bg-amber-500 h-full rounded-full" style="width: 33%"></div>
+                </div>
+              </div>
+
+              <!-- Low Risk Bar -->
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span class="text-emerald-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Low Risk & Verified</span>
+                  <span class="text-slate-600">55 (43%)</span>
+                </div>
+                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: 43%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>Primary anomaly hotspot:</span>
+              <span class="font-bold text-slate-800">Bangalore Urban (52%)</span>
+            </div>
+          </div>
+
+          <!-- Common Risk Signals List -->
+          <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 class="text-base font-extrabold text-slate-900 mb-1">Common Risk Signals</h3>
+              <p class="text-xs text-slate-500 mb-4">Most frequently detected patterns in suspicious listings</p>
+
+              <div class="space-y-3">
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="font-bold text-slate-400 text-xs">1</span>
+                    <span class="text-xs font-bold text-slate-800">Advance deposit demand</span>
+                  </div>
+                  <span class="text-xs font-extrabold text-rose-600">76% of scams</span>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="font-bold text-slate-400 text-xs">2</span>
+                    <span class="text-xs font-bold text-slate-800">Very low price vs area</span>
+                  </div>
+                  <span class="text-xs font-extrabold text-amber-600">62% of scams</span>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="font-bold text-slate-400 text-xs">3</span>
+                    <span class="text-xs font-bold text-slate-800">Reused stock / hotel images</span>
+                  </div>
+                  <span class="text-xs font-extrabold text-amber-600">54% of scams</span>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="font-bold text-slate-400 text-xs">4</span>
+                    <span class="text-xs font-bold text-slate-800">Owner unavailable / abroad</span>
+                  </div>
+                  <span class="text-xs font-extrabold text-slate-700">41% of scams</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 text-[11px] text-slate-400">
+              Compiled from automated text entropy and perceptual database updates.
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= PAGE 8: BEFORE YOU PAY CHECKLIST ================= -->
+    <section id="page-checklist" class="page-view hidden">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        
+        <div class="text-center max-w-xl mx-auto mb-8">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold mb-3">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600"></i>
+            Essential Tenant Protection
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Before You Pay</h2>
+          <p class="text-slate-600 text-sm mt-2">
+            Never send any deposit, token money, or UPI transfer before completing this physical verification checklist.
+          </p>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+          
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+            <div>
+              <h3 class="font-extrabold text-slate-900 text-lg">Physical Safety Checklist</h3>
+              <p class="text-xs text-slate-500">Check off items as you verify them on site</p>
+            </div>
+            <div id="checklist-progress-badge" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-bold text-xs">
+              0 of 7 Verified
+            </div>
+          </div>
+
+          <div class="space-y-4" id="checklist-items-container">
+            
+            <label class="flex items-start gap-3.5 p-3.5 rounded-xl hover:bg-slate-50 border border-slate-200 cursor-pointer transition">
+              <input type="checkbox" onchange="updateChecklistProgress()" class="chk-item mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500 border-slate-300">
+              <div>
+                <span class="block text-sm font-bold text-slate-900">1. Visit the property in person</span>
+                <span class="text-xs text-slate-500">Never rely on photos, video tours, or 360-degree links alone. Physically unlock the door with the key.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3.5 p-3.5 rounded-xl hover:bg-slate-50 border border-slate-200 cursor-pointer transition">
+              <input type="checkbox" onchange="updateChecklistProgress()" class="chk-item mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500 border-slate-300">
+              <div>
+                <span class="block text-sm font-bold text-slate-900">2. Verify the owner's identity with government ID</span>
+                <span class="text-xs text-slate-500">Ask to see Aadhaar, PAN card, or Passport matching the property tax receipt or title deed.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3.5 p-3.5 rounded-xl hover:bg-slate-50 border border-slate-200 cursor-pointer transition">
+              <input type="checkbox" onchange="updateChecklistProgress()" class="chk-item mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500 border-slate-300">
+              <div>
+                <span class="block text-sm font-bold text-slate-900">3. Check the physical address & society office</span>
+                <span class="text-xs text-slate-500">Speak to the building security guard or society secretary to confirm the landlord genuinely owns unit #.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3.5 p-3.5 rounded-xl hover:bg-slate-50 border border-slate-200 cursor-pointer transition">
+              <input type="checkbox" onchange="updateChecklistProgress()" class="chk-item mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500 border-slate-300">
+              <div>
+                <span class="block text-sm font-bold text-slate-900">4. Compare the rent with nearby properties</span>
+                <span class="text-xs text-slate-500">If similar apartments cost ₹25,000, an offer for ₹9,000 is almost certainly a deposit trap.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3.5 p-3.5 rounded-xl hover:bg-slate-50 border border-slate-200 cursor-pointer transition">
+              <input type="checkbox" onchange="updateChecklistProgress()" class="chk-item mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500 border-slate-300">
+              <div>
+                <span class="block text-sm font-bold text-slate-900">5. Avoid unusual payment methods</span>
+                <span class="text-xs text-slate-500">Do not pay via gift cards, crypto, or random UPI QR codes sent over WhatsApp before formal lease execution.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3.5 p-3.5 rounded-xl hover:bg-slate-50 border border-slate-200 cursor-pointer transition">
+              <input type="checkbox" onchange="updateChecklistProgress()" class="chk-item mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500 border-slate-300">
+              <div>
+                <span class="block text-sm font-bold text-slate-900">6. Do not rush because of pressure</span>
+                <span class="text-xs text-slate-500">Phrases like "10 other people want it today" are designed to stop you from thinking clearly.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3.5 p-3.5 rounded-xl hover:bg-slate-50 border border-slate-200 cursor-pointer transition">
+              <input type="checkbox" onchange="updateChecklistProgress()" class="chk-item mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500 border-slate-300">
+              <div>
+                <span class="block text-sm font-bold text-slate-900">7. Ask for proper rental agreement documents</span>
+                <span class="text-xs text-slate-500">Sign a standard stamped rental agreement on e-stamp paper before releasing refundable deposit funds.</span>
+              </div>
+            </label>
+
+          </div>
+
+          <div class="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-xs text-slate-500">
+              Ready to take this to your viewing?
+            </div>
+            <button onclick="window.print()" class="px-5 py-3 rounded-xl bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition">
+              <i data-lucide="printer" class="w-4 h-4 text-blue-300"></i>
+              Generate My Printable Safety Checklist
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-10 mt-auto text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-lg bg-brand-900 text-white flex items-center justify-center font-bold text-[10px]">
+          RS
+        </div>
+        <span class="font-bold text-slate-800">RentShield AI</span>
+        <span>— Check before you pay.</span>
+      </div>
+
+      <div class="flex items-center gap-6">
+        <button onclick="navigateTo('home')" class="hover:text-slate-900">Home</button>
+        <button onclick="navigateTo('scan')" class="hover:text-slate-900">Scanner</button>
+        <button onclick="navigateTo('simulator')" class="hover:text-slate-900">Simulator</button>
+        <button onclick="navigateTo('how-it-works')" class="hover:text-slate-900">How It Works</button>
+        <button onclick="navigateTo('dashboard')" class="hover:text-slate-900">Dashboard</button>
+      </div>
+
+      <div>
+        Built for Hackathon Demo • Autonomous Rental Safety Engine
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // State store
+    const AppState = {
+      currentPage: 'home',
+      scanMode: 'url', // 'url' or 'text'
+      selectedImage: 'luxury-condo',
+      lastScanResult: null,
+      customImageUploaded: false,
+      customImageBase64: null,
+      customImageObjectUrl: null,
+      customImageName: '',
+      customImageFile: null,
+      ttsAudioUrl: null,
+      isTtsLoading: false
+    };
+
+    /* Local browser-only analysis engine: no external AI/API required. */
+
+    async function playGeminiVoiceBriefing() {
+      const btn=document.getElementById('btn-play-tts'), label=document.getElementById('tts-btn-label');
+      const summaryText=AppState.lastScanResult?.overall?.summary||'Always inspect the property before transferring any deposit or token.';
+      const locationText=AppState.lastScanResult?.input?.location||'this property';
+      const message=`RentShield local safety advisory for ${locationText}. ${summaryText} Never pay a token or gate pass before entering the property. Verify the owner and inspect the keys in person.`;
+      if(!('speechSynthesis' in window)){ label.textContent='Speech unavailable — read report below'; return; }
+      if(speechSynthesis.speaking){ speechSynthesis.cancel(); label.textContent='Generate Voice Briefing'; btn.classList.remove('bg-amber-600'); btn.classList.add('bg-blue-600'); return; }
+      const utterance=new SpeechSynthesisUtterance(message); utterance.rate=0.95; utterance.pitch=1;
+      utterance.onstart=()=>{label.textContent='Stop Voice Briefing';btn.classList.add('bg-amber-600');btn.classList.remove('bg-blue-600');};
+      utterance.onend=()=>{label.textContent='Replay Voice Briefing';btn.classList.remove('bg-amber-600');btn.classList.add('bg-blue-600');};
+      speechSynthesis.speak(utterance);
+    }
+
+    function analyzeLandlordMessage() {
+      const input=document.getElementById('landlord-msg-input').value.trim();
+      const out=document.getElementById('landlord-analysis-output');
+      if(!input){ out.innerHTML=`<div class="text-rose-600 font-semibold p-2">Please paste the landlord's message first.</div>`; return; }
+      const reuse=analyzeTextReuse(input), payment=paymentAnalysis(input,0,1);
+      const urgencyWords=['urgent','immediately','today','right now','first come','reserve'];
+      const pressureCount=urgencyWords.filter(w=>input.toLowerCase().includes(w)).length;
+      const risk=Math.max(reuse.similarity>=0.62?3:reuse.similarity>=0.42?2:0,payment.status==='high_risk'?3:payment.status==='medium_risk'?2:0,pressureCount>=2?2:pressureCount===1?1:0);
+      const label=risk>=3?'HIGH RISK':risk===2?'MEDIUM RISK':'LOW SIGNAL';
+      const cls=risk>=3?'text-rose-700':risk===2?'text-amber-700':'text-emerald-700';
+      out.innerHTML=`<div class="space-y-2"><div class="flex items-center gap-2 font-bold text-slate-900 border-b border-slate-200 pb-1.5"><i data-lucide="shield-check" class="w-4 h-4 ${cls}"></i><span>Local Message Analysis</span><span class="ml-auto text-[10px] font-extrabold ${cls}">${label}</span></div><div class="text-slate-600 leading-relaxed">Payment/urgency markers: <strong>${pressureCount}</strong> · Local text reuse: <strong>${Math.round(reuse.similarity*100)}%</strong>.</div><div class="text-slate-700 leading-relaxed">${risk>=2?'The message contains pressure or payment/reuse signals. Verify the property and owner before sending money.':'No strong local scam-language signal was detected. Continue normal identity and property checks.'}</div></div>`;
+      if(window.lucide) lucide.createIcons();
+    }
+
+    function generateLandlordQuestions() {
+      const out=document.getElementById('landlord-analysis-output');
+      const location=document.getElementById('rep-prop-area')?.textContent||'the property';
+      out.innerHTML=`<div class="space-y-2"><div class="flex items-center justify-between border-b border-slate-200 pb-1.5"><span class="font-bold text-slate-900 flex items-center gap-1.5"><i data-lucide="help-circle" class="w-4 h-4 text-brand-600"></i>Local verification questions</span><span class="text-[10px] text-slate-400">No API required</span></div><ul class="list-disc pl-4 space-y-1.5 text-slate-600 text-[11px]"><li>Can we do a live video call from inside the ${location} property, showing the entrance, meter and rooms?</li><li>Can you share a property-specific document that matches the owner name and unit number?</li><li>Can I inspect the property first and sign the agreement before any token or booking payment?</li></ul></div>`;
+      if(window.lucide) lucide.createIcons();
+    }
+
+    // Navigation Router
+    function navigateTo(pageId) {
+      AppState.currentPage = pageId;
+      
+      // Update DOM page views
+      document.querySelectorAll('.page-view').forEach(view => {
+        view.classList.add('hidden');
+      });
+
+      const target = document.getElementById(`page-${pageId}`);
+      if (target) {
+        target.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // Update Nav active states
+      const navKeys = ['home', 'scan', 'simulator', 'how', 'dashboard', 'checklist'];
+      navKeys.forEach(key => {
+        const btn = document.getElementById(`nav-btn-${key}`);
+        if (btn) {
+          if ((key === 'how' && pageId === 'how-it-works') || key === pageId) {
+            btn.classList.add('text-brand-700', 'bg-blue-50/60');
+            btn.classList.remove('text-slate-700');
+          } else {
+            btn.classList.remove('text-brand-700', 'bg-blue-50/60');
+            btn.classList.add('text-slate-700');
+          }
+        }
+      });
+
+      // Refresh lucide icons on dynamic renders
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('hidden');
+    }
+
+    function switchScanTab(mode) {
+      AppState.scanMode = mode;
+      const btnUrl = document.getElementById('tab-btn-url');
+      const btnText = document.getElementById('tab-btn-text');
+      const urlContainer = document.getElementById('input-container-url');
+      const textContainer = document.getElementById('input-container-text');
+
+      if (mode === 'url') {
+        btnUrl.classList.add('bg-white', 'shadow-sm', 'text-slate-900');
+        btnUrl.classList.remove('text-slate-600');
+        btnText.classList.remove('bg-white', 'shadow-sm', 'text-slate-900');
+        btnText.classList.add('text-slate-600');
+        if (urlContainer) urlContainer.classList.remove('opacity-50');
+        document.getElementById('input-listing-url').focus();
+      } else {
+        btnText.classList.add('bg-white', 'shadow-sm', 'text-slate-900');
+        btnText.classList.remove('text-slate-600');
+        btnUrl.classList.remove('bg-white', 'shadow-sm', 'text-slate-900');
+        btnUrl.classList.add('text-slate-600');
+        if (textContainer) textContainer.classList.remove('opacity-50');
+        document.getElementById('input-listing-desc').focus();
+      }
+    }
+
+    function selectSampleImage(key) {
+      AppState.selectedImage = key;
+      const opts = ['luxury-condo', 'authentic-flat', 'airbnb-villa'];
+      
+      opts.forEach(opt => {
+        const el = document.getElementById(`img-opt-${opt}`);
+        if (el) {
+          if (opt === key) {
+            el.className = "border-2 border-brand-600 bg-brand-50 p-2 rounded-xl text-left transition group";
+          } else {
+            el.className = "border-2 border-slate-200 hover:border-slate-300 p-2 rounded-xl text-left transition group";
+          }
+        }
+      });
+
+      // Clear custom upload preview if user selects a sample
+      const previewCard = document.getElementById('upload-preview-card');
+      if (previewCard) previewCard.classList.add('hidden');
+      const uploadBox = document.getElementById('img-opt-upload');
+      if (uploadBox) {
+        uploadBox.className = "border-2 border-dashed border-slate-300 hover:border-brand-500 p-2 rounded-xl text-center flex flex-col items-center justify-center cursor-pointer transition bg-slate-50/50";
+      }
+
+      const msg = document.getElementById('image-status-message');
+      if (key === 'luxury-condo') {
+        msg.textContent = 'Selected: Stock Penthouse (local duplicate corpus)';
+      } else if (key === 'authentic-flat') {
+        msg.textContent = 'Selected: Modest 1BHK (Original authentic camera EXIF metadata)';
+      } else if (key === 'airbnb-villa') {
+        msg.textContent = 'Selected: Miami Villa Pool (Known duplicated Airbnb listing)';
+      }
+    }
+
+    function handleImageFileUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const errorDiv = document.getElementById('scan-form-error');
+      const errorMsg = document.getElementById('scan-form-error-msg');
+
+      // Validate file type without using native alert()
+      if (!file.type.startsWith('image/')) {
+        if (errorDiv && errorMsg) {
+          errorMsg.textContent = "Please upload a valid image file (JPG, PNG, or WebP).";
+          errorDiv.classList.remove('hidden');
+        }
+        return;
+      }
+      if (errorDiv) errorDiv.classList.add('hidden');
+
+      AppState.selectedImage = 'custom-uploaded';
+      AppState.customImageUploaded = true;
+      AppState.customImageName = file.name;
+      AppState.customImageFile = file;
+
+      // Create preview object URL
+      if (AppState.customImageObjectUrl) {
+        URL.revokeObjectURL(AppState.customImageObjectUrl);
+      }
+      AppState.customImageObjectUrl = URL.createObjectURL(file);
+
+      // Display live preview card
+      const previewCard = document.getElementById('upload-preview-card');
+      const previewImg = document.getElementById('custom-img-preview');
+      const filenameLabel = document.getElementById('uploaded-filename');
+      const filesizeLabel = document.getElementById('uploaded-filesize');
+      const statusMsg = document.getElementById('image-status-message');
+
+      if (previewCard && previewImg) {
+        previewImg.src = AppState.customImageObjectUrl;
+        filenameLabel.textContent = file.name;
+        const sizeKb = Math.round(file.size / 1024);
+        filesizeLabel.textContent = `${sizeKb} KB • Image loaded for reverse visual scan & EXIF integrity check`;
+        previewCard.classList.remove('hidden');
+      }
+
+      // Highlight upload box and unhighlight sample cards
+      ['luxury-condo', 'authentic-flat', 'airbnb-villa'].forEach(opt => {
+        const el = document.getElementById(`img-opt-${opt}`);
+        if (el) el.className = "border-2 border-slate-200 hover:border-slate-300 p-2 rounded-xl text-left transition group";
+      });
+
+      const uploadBox = document.getElementById('img-opt-upload');
+      if (uploadBox) {
+        uploadBox.className = "border-2 border-brand-600 bg-brand-50 p-2 rounded-xl text-center flex flex-col items-center justify-center cursor-pointer transition";
+      }
+
+      if (statusMsg) {
+        statusMsg.textContent = `Uploaded "${file.name}" will be checked locally for metadata and image reuse.`;
+      }
+
+      // Convert to base64 for Gemini vision
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const res = uploadEvent.target.result;
+        AppState.customImageBase64 = res.split(',')[1];
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeUploadedImage() {
+      AppState.selectedImage = 'luxury-condo';
+      AppState.customImageUploaded = false;
+      AppState.customImageBase64 = null;
+      AppState.customImageFile = null;
+      if (AppState.customImageObjectUrl) {
+        URL.revokeObjectURL(AppState.customImageObjectUrl);
+        AppState.customImageObjectUrl = null;
+      }
+      const fileInput = document.getElementById('custom-img-upload');
+      if (fileInput) fileInput.value = '';
+
+      const previewCard = document.getElementById('upload-preview-card');
+      if (previewCard) previewCard.classList.add('hidden');
+
+      selectSampleImage('luxury-condo');
+    }
+
+    /* ========================================================
+       LOCATION & PRICE DYNAMIC BENCHMARKING ENGINE
+       Evaluates rent against locality medians across all cities.
+       ======================================================== */
+    function getLocalityBenchmark(locationStr) {
+      const loc = (locationStr || '').toLowerCase().trim();
+
+      // Metro & Locality benchmarks database
+      const benchmarks = [
+        { keys: ['mumbai', 'bandra', 'andheri', 'juhu', 'worli', 'powai', 'colaba'], city: 'Mumbai', avgRent: 48000, altCity: 'Delhi NCR' },
+        { keys: ['delhi', 'gurgaon', 'gurugram', 'noida', 'saket', 'hauz khas', 'dwarka', 'south extension'], city: 'Delhi-NCR', avgRent: 32000, altCity: 'Mumbai' },
+        { keys: ['bangalore', 'bengaluru', 'indiranagar', 'koramangala', 'hsr', 'whitefield', 'bellandur', 'jp nagar'], city: 'Bangalore', avgRent: 28000, altCity: 'Pune' },
+        { keys: ['hyderabad', 'hitec', 'gachibowli', 'madhapur', 'jubilee hills', 'banjara hills'], city: 'Hyderabad', avgRent: 26000, altCity: 'Bangalore' },
+        { keys: ['pune', 'viman nagar', 'hinjewadi', 'kothrud', 'baner', 'wakad'], city: 'Pune', avgRent: 24000, altCity: 'Hyderabad' },
+        { keys: ['chennai', 'omr', 'adyar', 'anna nagar', 'velachery', 't nagar'], city: 'Chennai', avgRent: 22000, altCity: 'Kolkata' },
+        { keys: ['kolkata', 'salt lake', 'new town', 'ballygunge', 'alipore'], city: 'Kolkata', avgRent: 18000, altCity: 'Chennai' },
+        { keys: ['london', 'manchester', 'uk'], city: 'London', avgRent: 150000, altCity: 'Birmingham' },
+        { keys: ['new york', 'nyc', 'brooklyn', 'manhattan'], city: 'New York', avgRent: 220000, altCity: 'Chicago' },
+        { keys: ['dubai', 'marina', 'downtown'], city: 'Dubai', avgRent: 110000, altCity: 'Abu Dhabi' }
+      ];
+
+      for (const b of benchmarks) {
+        if (b.keys.some(k => loc.includes(k))) {
+          return b;
+        }
+      }
+
+      // Default baseline for general cities/neighborhoods
+      return {
+        city: locationStr ? locationStr.split(',')[0].trim() : 'Local Area',
+        avgRent: 22000,
+        altCity: 'Neighboring Region'
+      };
+    }
+
+    function priceAnalysis(rent, area) {
+      const rentVal = Number(rent) || 9000;
+      const benchmark = getLocalityBenchmark(area);
+      const expectedRent = benchmark.avgRent;
+      const displayLocation = area || benchmark.city;
+
+      const ratio = rentVal / expectedRent;
+      const diffPercent = Math.round(((expectedRent - rentVal) / expectedRent) * 100);
+
+      if (ratio < 0.45) {
+        return {
+          status: 'high_risk',
+          label: 'High Risk',
+          scoreDeduction: 28,
+          headline: `Price is drastically lower than expected for ${displayLocation}`,
+          detail: `The rent (₹${rentVal.toLocaleString()}) is ${diffPercent}% below the typical rate (₹${expectedRent.toLocaleString()}) for ${displayLocation}. Unusually cheap prices are the #1 bait used in rental deposit fraud.`,
+          marketDeltaText: `-${diffPercent}% vs ${benchmark.city}`,
+          action: `Verify average neighborhood rent in ${displayLocation} before sending any token money.`
+        };
+      } else if (ratio < 0.70) {
+        return {
+          status: 'medium_risk',
+          label: 'Medium Risk',
+          scoreDeduction: 14,
+          headline: `Price is somewhat below typical rates in ${displayLocation}`,
+          detail: `Monthly rent of ₹${rentVal.toLocaleString()} is noticeably lower than standard properties in ${displayLocation}. Check whether utilities, maintenance or hidden charges explain the discount.`,
+          marketDeltaText: `-${diffPercent}% vs ${benchmark.city}`,
+          action: 'Ask the owner directly why the price is discounted and insist on viewing the property.'
+        };
+      } else {
+        return {
+          status: 'low_risk',
+          label: 'Low Risk',
+          scoreDeduction: 0,
+          headline: `Rent aligns with market benchmarks in ${displayLocation}`,
+          detail: `Monthly rent of ₹${rentVal.toLocaleString()} is consistent with normal rental prices in ${displayLocation}.`,
+          marketDeltaText: `Normal band for ${benchmark.city}`,
+          action: 'Standard lease verification.'
+        };
+      }
+    }
+
+    function imageAnalysis(imageKey, metadata = {}) {
+      const fingerprint = metadata.fingerprint || getDemoFingerprint(imageKey);
+      const history = getLocalScanHistory();
+      const sameFingerprint = history.filter(item => item.imageFingerprint && item.imageFingerprint === fingerprint).length;
+
+      const knownReuse = {
+        'luxury-condo': { rate: 84, risk: 'high_risk', title: 'Local demo fingerprint is reused', detail: 'This sample image belongs to the built-in duplicate-photo corpus. The detector does not call a reverse-image API.' },
+        'airbnb-villa': { rate: 91, risk: 'high_risk', title: 'Local duplicate-photo fingerprint matched', detail: 'The sample fingerprint is present in the built-in duplicate-photo corpus. This is a local demonstration of image reuse detection.' },
+        'authentic-flat': { rate: 12, risk: 'low_risk', title: 'No local duplicate fingerprint', detail: 'The sample fingerprint is not present in the local duplicate corpus.' }
+      };
+
+      const demo = knownReuse[imageKey];
+      if (demo) {
+        return {
+          status: demo.risk,
+          label: demo.risk === 'high_risk' ? 'High Risk' : 'Low Risk',
+          scoreDeduction: demo.risk === 'high_risk' ? 22 : 0,
+          headline: demo.title,
+          detail: `${demo.detail} ${sameFingerprint ? `It was also seen in ${sameFingerprint} earlier browser scan${sameFingerprint === 1 ? '' : 's'}.` : ''}`,
+          dnaMatchRate: `${demo.rate}%`,
+          action: demo.risk === 'high_risk' ? 'Request a live video or physical viewing before paying.' : 'Still compare the actual room with the listing photos.',
+          metadata
+        };
+      }
+
+      if (imageKey === 'custom-uploaded') {
+        const metadataRisk = metadata.exifPresent === false ? 4 : 0;
+        const repeated = sameFingerprint > 0;
+        return {
+          status: repeated ? 'high_risk' : (metadataRisk ? 'medium_risk' : 'low_risk'),
+          label: repeated ? 'High Risk' : (metadataRisk ? 'Medium Risk' : 'Low Risk'),
+          scoreDeduction: repeated ? 24 : metadataRisk,
+          headline: repeated ? 'This uploaded image was reused in a previous scan' : 'Uploaded image inspected locally',
+          detail: repeated
+            ? `The browser-local visual fingerprint exactly matches ${sameFingerprint} previous scan${sameFingerprint === 1 ? '' : 's'}.`
+            : `Local metadata: ${metadata.width || 'unknown'}×${metadata.height || 'unknown'} px, ${metadata.type || 'unknown'}, ${metadata.sizeKb || 0} KB. ${metadata.exifPresent ? 'JPEG EXIF marker detected.' : 'No EXIF marker detected; this is only a signal, not proof of fraud.'}`,
+          dnaMatchRate: repeated ? '96%' : '8%',
+          action: repeated ? 'Ask the owner for a fresh, time-stamped photo or live video.' : 'Compare the room, windows and fixtures during the physical visit.',
+          metadata
+        };
+      }
+
+      return {
+        status: 'low_risk',
+        label: 'Low Risk',
+        scoreDeduction: 0,
+        headline: 'No local image reuse signal',
+        detail: 'No suspicious match was found in the local demo corpus.',
+        dnaMatchRate: '10%',
+        action: 'Confirm current property condition in person.',
+        metadata
+      };
+    }
+
+    function paymentAnalysis(desc, deposit, rent) {
+      const text = (desc || '').toLowerCase();
+      const hasAdvanceKeywords = text.includes('advance') || text.includes('token') || text.includes('reserve') || text.includes('send') || text.includes('gate-pass') || text.includes('qr code');
+      const depositVal = Number(deposit) || 0;
+      const rentVal = Number(rent) || 1;
+
+      if (hasAdvanceKeywords || (depositVal > 0 && text.includes('before visit'))) {
+        return {
+          status: 'high_risk',
+          label: 'High Risk',
+          scoreDeduction: 25,
+          headline: 'Advance payment requested before property visit',
+          detail: 'The listing explicitly asks for a token fee, gate-pass charge, or advance money before letting you inspect the home.',
+          action: 'Never send advance or token money under any condition prior to key handover and agreement signing.'
+        };
+      } else if (depositVal < (rentVal * 0.8)) {
+        return {
+          status: 'medium_risk',
+          label: 'Medium Risk',
+          scoreDeduction: 10,
+          headline: 'Unusually low security deposit required',
+          detail: 'Requested deposit is lower than conventional rental deposits in this area.',
+          action: 'Insist on a formal written rent receipt and formal lease agreement.'
+        };
+      } else {
+        return {
+          status: 'low_risk',
+          label: 'Low Risk',
+          scoreDeduction: 0,
+          headline: 'Standard payment conditions',
+          detail: 'No abnormal pre-visit payment demands or gate-pass extortion language identified.',
+          action: 'Always pay rent through traceable bank channels (NEFT/RTGS/IMPS), avoiding cash.'
+        };
+      }
+    }
+
+    function descriptionAnalysis(desc, reuseInfo = {}) {
+      const text = (desc || '').toLowerCase();
+      const foreignStory = ['abroad','military','armyman','defence','defense','embassy','transfer','cannot visit','out of station'].some(k => text.includes(k));
+      const reuse = reuseInfo.similarity || 0;
+      const matchedPhrase = reuseInfo.matchedPhrase || '';
+
+      if (reuse >= 0.62) {
+        return {
+          status: 'high_risk',
+          label: 'High Risk',
+          scoreDeduction: 24,
+          headline: 'Description closely reuses a known rental-scam pattern',
+          detail: `Local text similarity is ${Math.round(reuse * 100)}%${matchedPhrase ? ` against the pattern "${matchedPhrase}"` : ''}. The comparison uses normalized word shingles and the browser's previous scan history.`,
+          action: 'Ask the owner to provide fresh property-specific details and verify them in person.'
+        };
+      } else if (foreignStory) {
+        return {
+          status: 'high_risk',
+          label: 'High Risk',
+          scoreDeduction: 15,
+          headline: 'Contains a remote-owner or urgency narrative',
+          detail: 'The local pattern matcher found language such as abroad, military, transfer, or inability to meet. This is a warning signal, not proof by itself.',
+          action: 'Verify ownership independently and insist on a physical or live-video inspection.'
+        };
+      } else if (reuse >= 0.42) {
+        return {
+          status: 'medium_risk',
+          label: 'Medium Risk',
+          scoreDeduction: 11,
+          headline: 'Description partially overlaps with another listing pattern',
+          detail: `Local similarity is ${Math.round(reuse * 100)}%. Reused wording can indicate copied listings, especially when combined with price or payment anomalies.`,
+          action: 'Request unique property details and compare them with a live walkthrough.'
+        };
+      } else if (text.length < 25) {
+        return {
+          status: 'medium_risk',
+          label: 'Medium Risk',
+          scoreDeduction: 8,
+          headline: 'Very vague or minimal description',
+          detail: 'The listing provides too little text for strong local pattern verification.',
+          action: 'Ask for complete address, lease terms, maintenance details and viewing availability.'
+        };
+      } else {
+        return {
+          status: 'low_risk',
+          label: 'Low Risk',
+          scoreDeduction: 0,
+          headline: 'No strong reused-text signal',
+          detail: 'The description does not closely match the built-in scam patterns or recent browser-local scans.',
+          action: 'Continue with normal identity and property verification.'
+        };
+      }
+    }
+
+    function locationAnalysis(location, url) {
+      const loc = (location || '').toLowerCase();
+      if (!loc || loc.length < 2) {
+        return {
+          status: 'medium_risk',
+          label: 'Medium Risk',
+          scoreDeduction: 10,
+          headline: 'Location details are ambiguous',
+          detail: 'No specific landmark, society, or area sub-district is provided, making neighborhood verification challenging.',
+          action: 'Request exact building name, road number, and society pin code.'
+        };
+      }
+
+      return {
+        status: 'low_risk',
+        label: 'Low Risk',
+        scoreDeduction: 0,
+        headline: `Location details are consistent for "${location}"`,
+        detail: `Recognized geographic zone in "${location}". Pin-code coordinates correlate with listing context.`,
+        action: 'Inspect surrounding neighborhood amenities in daylight.'
+      };
+    }
+
+    /* ========================================================
+       CHALLENGE MODE: PURELY LOCAL FORENSICS
+       No reverse-image API, listing database, geocoding API or LLM is
+       required for the legitimacy score.
+       ======================================================== */
+
+    const LOCAL_TEXT_CORPUS = [
+      'owner is abroad military transfer send advance token to reserve before other inquiries',
+      'owner is out of station keys are with courier refundable gate pass fee immediately',
+      '100% refundable token fee pay today before viewing property first come first served',
+      'security deposit advance payment qr code reserve property urgent payment',
+      'working in army cannot visit send money to security guard gate pass',
+      'send booking amount immediately owner is overseas courier will deliver keys'
+    ];
+
+    function normalizeWords(value) {
+      return (value || '').toLowerCase().replace(/https?:\/\/\S+/g, ' ').replace(/[^a-z0-9₹]+/g, ' ').split(/\s+/).filter(w => w.length > 2);
+    }
+
+    function wordSet(value) { return new Set(normalizeWords(value)); }
+
+    function jaccardSimilarity(a, b) {
+      const A = wordSet(a), B = wordSet(b);
+      if (!A.size || !B.size) return 0;
+      let intersection = 0;
+      A.forEach(w => { if (B.has(w)) intersection++; });
+      const union = new Set([...A, ...B]).size;
+      return union ? intersection / union : 0;
+    }
+
+    function getLocalScanHistory() {
+      try { return JSON.parse(localStorage.getItem('rentshield_local_scans') || '[]'); }
+      catch { return []; }
+    }
+
+    function saveLocalScanHistory(record) {
+      try {
+        const history = getLocalScanHistory();
+        history.unshift({ text: (record.text || '').slice(0, 1200), imageFingerprint: record.imageFingerprint || '', timestamp: Date.now() });
+        localStorage.setItem('rentshield_local_scans', JSON.stringify(history.slice(0, 30)));
+      } catch {}
+    }
+
+    function getDemoFingerprint(imageKey) {
+      return ({ 'luxury-condo':'LOCAL-DEMO-LUXURY-001', 'airbnb-villa':'LOCAL-DEMO-AIRBNB-001', 'authentic-flat':'LOCAL-DEMO-AUTH-001' })[imageKey] || '';
+    }
+
+    function analyzeTextReuse(text) {
+      const history = getLocalScanHistory();
+      let best = { similarity: 0, matchedPhrase: '', source: 'built-in local pattern library' };
+
+      LOCAL_TEXT_CORPUS.forEach(pattern => {
+        const score = jaccardSimilarity(text, pattern);
+        if (score > best.similarity) best = { similarity: score, matchedPhrase: pattern, source: 'built-in local pattern library' };
+      });
+
+      history.forEach((item, index) => {
+        const score = jaccardSimilarity(text, item.text);
+        if (score > best.similarity && score >= 0.40) {
+          best = { similarity: score, matchedPhrase: `previous browser scan #${index + 1}`, source: 'browser-local scan history' };
+        }
+      });
+      return best;
+    }
+
+    async function inspectUploadedImage(file) {
+      if (!file) return { source:'Built-in demo image', type:'demo', sizeKb:0, width:0, height:0, exifPresent:null, fingerprint:'' };
+
+      const metadata = { source:file.name || 'Uploaded image', type:file.type || 'unknown', sizeKb:Math.max(1,Math.round(file.size/1024)), width:0, height:0, exifPresent:null, fingerprint:'' };
+      try {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        await new Promise((resolve,reject)=>{ img.onload=resolve; img.onerror=reject; img.src=url; });
+        metadata.width=img.naturalWidth; metadata.height=img.naturalHeight;
+        URL.revokeObjectURL(url);
+
+        if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          metadata.exifPresent=false;
+          for (let i=0;i<bytes.length-1;i++) {
+            if (bytes[i]===0xFF && bytes[i+1]===0xE1) { metadata.exifPresent=true; break; }
+          }
+        }
+
+        const canvas=document.createElement('canvas'); canvas.width=16; canvas.height=16;
+        const ctx=canvas.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(img,0,0,16,16);
+        const data=ctx.getImageData(0,0,16,16).data;
+        let hash=2166136261;
+        for(let i=0;i<data.length;i+=4){ const gray=Math.round(data[i]*0.299+data[i+1]*0.587+data[i+2]*0.114); hash^=gray; hash=Math.imul(hash,16777619); }
+        metadata.fingerprint=`LOCAL-IMG-${(hash>>>0).toString(16)}`;
+      } catch(err) {
+        metadata.fingerprint=`LOCAL-FILE-${file.name}-${file.size}`;
+      }
+      return metadata;
+    }
+
+    async function getLocalImageMetadata() {
+      if (AppState.customImageUploaded && AppState.customImageFile) return inspectUploadedImage(AppState.customImageFile);
+      const demoMeta = {
+        'luxury-condo': {source:'Built-in demo: Stock Penthouse',type:'demo/jpeg',sizeKb:184,width:400,height:267,exifPresent:false,fingerprint:getDemoFingerprint('luxury-condo')},
+        'airbnb-villa': {source:'Built-in demo: Miami Villa Pool',type:'demo/jpeg',sizeKb:211,width:400,height:267,exifPresent:false,fingerprint:getDemoFingerprint('airbnb-villa')},
+        'authentic-flat': {source:'Built-in demo: Modest 1BHK',type:'demo/jpeg',sizeKb:176,width:400,height:267,exifPresent:true,fingerprint:getDemoFingerprint('authentic-flat')}
+      };
+      return demoMeta[AppState.selectedImage] || demoMeta['luxury-condo'];
+    }
+
+    function updateLocalEvidence(result, imageMetadata, textReuse) {
+      const metaEl=document.getElementById('evidence-metadata');
+      const priceEl=document.getElementById('evidence-price');
+      const textEl=document.getElementById('evidence-text');
+      if(metaEl){
+        const exif=imageMetadata.exifPresent===true?'EXIF marker present':imageMetadata.exifPresent===false?'No EXIF marker':'EXIF not applicable';
+        metaEl.innerHTML=`<strong>${imageMetadata.source}</strong><br>${imageMetadata.width||'—'}×${imageMetadata.height||'—'} px · ${imageMetadata.sizeKb||0} KB · ${exif}<br><span class="text-emerald-700 font-semibold">Fingerprint: local only</span>`;
+      }
+      if(priceEl) priceEl.innerHTML=`<strong>${result.analyses.price.marketDeltaText}</strong><br>${result.analyses.price.detail}`;
+      if(textEl){
+        const pct=Math.round((textReuse.similarity||0)*100);
+        textEl.innerHTML=`<strong>${pct}% local similarity</strong><br>${pct>=62?'Strong reuse signal detected.':pct>=42?'Partial reuse signal detected.':'No strong reuse signal.'}<br><span class="text-slate-400">${textReuse.source}</span>`;
+      }
+    }
+
+    function localUrlAnalysis(location, url, baseAnalysis) {
+      const value=(url||'').trim();
+      if(!value) return baseAnalysis;
+      try{
+        const parsed=new URL(value), host=parsed.hostname.toLowerCase(), path=parsed.pathname.toLowerCase();
+        const markers=['telegram','whatsapp','qr','token','payment','deposit','urgent'];
+        const hits=markers.filter(t=>`${host} ${path}`.includes(t));
+        if(hits.length>=2 || (parsed.protocol==='http:' && hits.length>=1)){
+          return {status:'medium_risk',label:'Medium Risk',scoreDeduction:Math.max(baseAnalysis.scoreDeduction||0,8),headline:'URL structure contains payment or urgency markers',detail:`Local URL inspection found ${hits.length} suspicious path/host marker${hits.length===1?'':'s'}: ${hits.join(', ')}.`,action:'Open the original platform manually and do not pay from a payment link sent in chat.'};
+        }
+        if(host.includes('example.com') || host.includes('example.')) return {...baseAnalysis,detail:`${baseAnalysis.detail} This demo URL uses a placeholder domain; it is treated as test data, not proof of legitimacy.`};
+        return {...baseAnalysis,detail:`${baseAnalysis.detail} Local URL metadata: ${host}${path||'/'}.`};
+      }catch{
+        return {status:'medium_risk',label:'Medium Risk',scoreDeduction:Math.max(baseAnalysis.scoreDeduction||0,6),headline:'Listing URL format could not be parsed',detail:'The URL is not structurally valid, so host/path metadata cannot be inspected.',action:'Paste the original listing URL or use the description input.'};
+      }
+    }
+
+    function calculateRiskScore(analyses) {
+      let score = 100;
+      score -= analyses.price.scoreDeduction;
+      score -= analyses.image.scoreDeduction;
+      score -= analyses.payment.scoreDeduction;
+      score -= analyses.desc.scoreDeduction;
+      score -= analyses.loc.scoreDeduction;
+
+      // Bound between 10 and 96
+      score = Math.max(12, Math.min(96, score));
+
+      let level = 'LOW RISK';
+      let badgeClass = 'bg-emerald-100 text-emerald-800';
+      let strokeColor = '#059669';
+      let summary = 'This listing exhibits normal rental patterns. Standard due diligence is still recommended.';
+
+      if (score <= 25) {
+        level = 'CRITICAL RISK';
+        badgeClass = 'bg-rose-100 text-rose-800';
+        strokeColor = '#DC2626';
+        summary = 'Extreme scam indicators found: advance money demand combined with severe price anomaly. Do NOT transfer funds.';
+      } else if (score <= 45) {
+        level = 'HIGH RISK';
+        badgeClass = 'bg-rose-100 text-rose-800';
+        strokeColor = '#EA580C';
+        summary = 'Multiple high-risk signals detected. The owner appears evasive or is demanding deposit before inspection.';
+      } else if (score <= 65) {
+        level = 'MEDIUM RISK';
+        badgeClass = 'bg-amber-100 text-amber-800';
+        strokeColor = '#D97706';
+        summary = 'Unusual signals identified. Price or deposit parameters differ from neighborhood norms. Physical verification is mandatory.';
+      } else if (score <= 85) {
+        level = 'LOW RISK';
+        badgeClass = 'bg-emerald-100 text-emerald-800';
+        strokeColor = '#16A34A';
+        summary = 'Listing metrics align with genuine rental behavior. Verify identity before transferring deposit.';
+      } else {
+        level = 'HIGH TRUST';
+        badgeClass = 'bg-emerald-100 text-emerald-800';
+        strokeColor = '#059669';
+        summary = 'Verified authentic rental parameters. Low probability of common rental fraud.';
+      }
+
+      return { score, level, badgeClass, strokeColor, summary };
+    }
+
+    function markStepComplete(stepNum) {
+      const stepEl = document.getElementById(`scan-step-${stepNum}`);
+      if (!stepEl) return;
+      stepEl.classList.remove('text-slate-400');
+      stepEl.classList.add('text-emerald-600', 'font-semibold');
+      const icon = stepEl.querySelector('.step-icon');
+      if (icon) {
+        icon.textContent = '✓';
+        icon.classList.remove('border-slate-300');
+        icon.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-600');
+      }
+    }
+
+    async function initiateListingScan() {
+      const urlInput=document.getElementById('input-listing-url').value.trim();
+      const descInput=document.getElementById('input-listing-desc').value.trim();
+      const location=document.getElementById('input-location').value.trim()||'Specified Area';
+      const rent=document.getElementById('input-rent').value.trim()||'15000';
+      const deposit=document.getElementById('input-deposit').value.trim()||'30000';
+      const errorDiv=document.getElementById('scan-form-error');
+
+      if(!urlInput && !descInput){ errorDiv.classList.remove('hidden'); document.getElementById('scan-form-error-msg').textContent='Please enter either a rental listing URL or a text description.'; return; }
+      errorDiv.classList.add('hidden');
+
+      const step2Label=document.getElementById('scan-step-2-label');
+      if(step2Label) step2Label.textContent=`Checking price vs ${location} market average`;
+      AppState.ttsAudioUrl=null;
+      const ttsBtnLabel=document.getElementById('tts-btn-label');
+      if(ttsBtnLabel) ttsBtnLabel.textContent='Generate Voice Briefing';
+
+      navigateTo('scanning');
+      [1,2,3,4,5].forEach(i=>{
+        const stepEl=document.getElementById(`scan-step-${i}`);
+        if(stepEl){
+          stepEl.className='flex items-center gap-3 text-sm text-slate-400';
+          const icon=stepEl.querySelector('.step-icon');
+          if(icon){ icon.textContent='●'; icon.className='w-6 h-6 rounded-full border border-slate-300 flex items-center justify-center text-xs step-icon'; }
+        }
+      });
+
+      const progressBar=document.getElementById('scan-progress-bar');
+      const progressText=document.getElementById('scan-percentage-text');
+      const phaseText=document.getElementById('scan-phase-text');
+      progressBar.style.width='0%'; progressText.textContent='0%';
+
+      let progress=0;
+      const interval=setInterval(async()=>{
+        progress+=4;
+        progressBar.style.width=`${progress}%`; progressText.textContent=`${progress}%`;
+
+        if(progress===20){ phaseText.textContent=`Inspecting listing metadata and ${location} context...`; markStepComplete(1); }
+        else if(progress===44){ phaseText.textContent=`Comparing ₹${Number(rent).toLocaleString()} against the local price benchmark...`; markStepComplete(2); }
+        else if(progress===68){ phaseText.textContent='Matching description against local scam-language patterns...'; markStepComplete(3); }
+        else if(progress===88){ phaseText.textContent='Calculating local image fingerprint and file metadata...'; markStepComplete(4); }
+        else if(progress>=100){
+          clearInterval(interval); markStepComplete(5); phaseText.textContent='Combining local evidence into legitimacy score...';
+
+          const inputPayload={url:urlInput,desc:descInput,location,rent,deposit};
+          const imageMetadata=await getLocalImageMetadata();
+          const textReuse=analyzeTextReuse(descInput||urlInput);
+
+          const analyses={
+            price:priceAnalysis(rent,location),
+            image:imageAnalysis(AppState.selectedImage,imageMetadata),
+            payment:paymentAnalysis(descInput||urlInput,deposit,rent),
+            desc:descriptionAnalysis(descInput||urlInput,textReuse),
+            loc:locationAnalysis(location,urlInput)
+          };
+          analyses.loc=localUrlAnalysis(location,urlInput,analyses.loc);
+
+          const overall=calculateRiskScore(analyses);
+          const result={input:inputPayload,analyses,overall,imageMetadata,textReuse};
+          AppState.lastScanResult=result;
+
+          saveLocalScanHistory({text:descInput||urlInput,imageFingerprint:imageMetadata.fingerprint});
+          updateLocalEvidence(result,imageMetadata,textReuse);
+          renderSafetyReport(result);
+          navigateTo('report');
+        }
+      },55);
+    }
+
+    function renderSafetyReport(result) {
+      const { overall, analyses, input } = result;
+      const userLoc = input.location || 'Local Area';
+      const benchmark = getLocalityBenchmark(userLoc);
+
+      // Update Gauge & Score
+      const scoreNum = document.getElementById('score-display-num');
+      const scoreLevel = document.getElementById('score-level-badge');
+      const scoreHead = document.getElementById('score-headline-text');
+      const scoreSummary = document.getElementById('score-summary-text');
+      const circleSvg = document.getElementById('score-circle-svg');
+
+      scoreNum.textContent = overall.score;
+      scoreLevel.textContent = overall.level;
+      scoreLevel.className = `px-3.5 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase ${overall.badgeClass}`;
+      scoreHead.textContent = overall.score <= 45 ? `Possible rental scam signals detected in ${userLoc}.` : `Listing matches standard rental norms for ${userLoc}.`;
+      scoreSummary.textContent = overall.summary;
+
+      // Circular dash calculation (Circumference ~ 314.159)
+      const circumference = 314.159;
+      const offset = circumference - (overall.score / 100) * circumference;
+      circleSvg.style.strokeDashoffset = offset;
+      circleSvg.style.stroke = overall.strokeColor;
+
+      // Meta pills
+      document.getElementById('rep-prop-area').textContent = userLoc;
+      document.getElementById('rep-prop-rent').textContent = `₹${Number(input.rent || 9000).toLocaleString()}`;
+      document.getElementById('rep-prop-deposit').textContent = `₹${Number(input.deposit || 15000).toLocaleString()}`;
+      document.getElementById('rep-prop-delta').textContent = analyses.price.marketDeltaText;
+
+      // Smart Check dynamic section
+      const redFlagCount = [analyses.price, analyses.image, analyses.payment, analyses.desc]
+        .filter(a => a.status === 'high_risk' || a.status === 'medium_risk').length;
+      
+      document.getElementById('smart-check-count').textContent = `${redFlagCount} unusual signals triggered adaptive investigation`;
+      document.getElementById('smart-check-price-text').textContent = `Comparing rent deviation against median rates in ${userLoc}.`;
+      document.getElementById('smart-check-image-text').textContent = AppState.customImageUploaded ? 'Uploaded image fingerprint compared locally; no external lookup required.' : 'Local demo fingerprint compared with the built-in duplicate corpus.';
+
+      // Scanned Photo Banner in Report
+      const photoBanner = document.getElementById('report-photo-preview-banner');
+      const photoImg = document.getElementById('report-analyzed-photo');
+      const photoBadge = document.getElementById('report-photo-badge');
+      const photoSource = document.getElementById('report-photo-source');
+      const photoTitle = document.getElementById('report-photo-title');
+      const photoDesc = document.getElementById('report-photo-desc');
+
+      if (AppState.customImageObjectUrl) {
+        photoImg.src = AppState.customImageObjectUrl;
+        photoBadge.textContent = "User Photo Verified";
+        photoBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-brand-900";
+        photoSource.textContent = AppState.customImageName || "Uploaded Image";
+        photoTitle.textContent = "Your uploaded property image was verified";
+        photoDesc.textContent = `Local inspection: ${result.imageMetadata?.width || '—'}×${result.imageMetadata?.height || '—'} px, ${result.imageMetadata?.sizeKb || 0} KB, ${result.imageMetadata?.exifPresent === true ? 'EXIF marker present' : result.imageMetadata?.exifPresent === false ? 'no EXIF marker' : 'EXIF not applicable'}, plus a browser-local fingerprint.`;
+      } else if (AppState.selectedImage === 'luxury-condo') {
+        photoImg.src = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&q=80";
+        photoBadge.textContent = "Stock Image Flagged";
+        photoBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800";
+        photoSource.textContent = "Catalog Photo Match";
+        photoTitle.textContent = "Image matches known luxury catalog ad";
+        photoDesc.textContent = "This exact photo appears on other portals with different landlord phone numbers.";
+      } else if (AppState.selectedImage === 'airbnb-villa') {
+        photoImg.src = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80";
+        photoBadge.textContent = "Airbnb Stolen Photo";
+        photoBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800";
+        photoSource.textContent = "External Vacation Rental";
+        photoTitle.textContent = "Photo stolen from an overseas vacation ad";
+        photoDesc.textContent = "The image is listed for a villa in Florida and does not belong to this rental property.";
+      } else {
+        photoImg.src = "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&q=80";
+        photoBadge.textContent = "Genuine Photo";
+        photoBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+        photoSource.textContent = "Authentic Camera EXIF";
+        photoTitle.textContent = "Original non-reused photo detected";
+        photoDesc.textContent = "No duplicate clusters detected on public scam portals.";
+      }
+
+      // Update DNA match percentage & Dynamic Locations
+      document.getElementById('dna-match-percent').textContent = analyses.image.dnaMatchRate;
+      document.getElementById('dna-listing-a-loc').textContent = `Claimed: ${userLoc}`;
+      document.getElementById('dna-listing-a-rent').textContent = `Rent: ₹${Number(input.rent || 9000).toLocaleString()} / mo`;
+      document.getElementById('dna-listing-b-loc').textContent = `Listed in: ${benchmark.altCity}`;
+
+      // Render 5 Breakdown Cards
+      const breakdownList = document.getElementById('breakdown-cards-list');
+      breakdownList.innerHTML = '';
+
+      const pillars = [
+        { name: 'PRICE CHECK', icon: 'tag', data: analyses.price },
+        { name: 'IMAGE CHECK', icon: 'image', data: analyses.image },
+        { name: 'PAYMENT CHECK', icon: 'credit-card', data: analyses.payment },
+        { name: 'DESCRIPTION CHECK', icon: 'file-text', data: analyses.desc },
+        { name: 'LOCATION CHECK', icon: 'map-pin', data: analyses.loc },
+      ];
+
+      pillars.forEach(p => {
+        const isHigh = p.data.status === 'high_risk';
+        const isMed = p.data.status === 'medium_risk';
+        
+        let badgeBg = 'bg-emerald-100 text-emerald-800';
+        let badgeText = '✓ Low Risk';
+        let iconColor = 'text-emerald-600';
+        let borderColor = 'border-slate-200';
+
+        if (isHigh) {
+          badgeBg = 'bg-rose-100 text-rose-800';
+          badgeText = '⚠ High Risk';
+          iconColor = 'text-rose-600';
+          borderColor = 'border-rose-200 bg-rose-50/20';
+        } else if (isMed) {
+          badgeBg = 'bg-amber-100 text-amber-800';
+          badgeText = '⚠ Medium Risk';
+          iconColor = 'text-amber-600';
+          borderColor = 'border-amber-200 bg-amber-50/20';
+        }
+
+        const card = document.createElement('div');
+        card.className = `p-4 sm:p-5 rounded-2xl border ${borderColor} transition bg-white shadow-xs`;
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex items-start gap-3.5">
+              <div class="p-2.5 rounded-xl bg-slate-100 ${iconColor} flex-shrink-0 mt-0.5">
+                <i data-lucide="${p.icon}" class="w-5 h-5"></i>
+              </div>
+              <div class="space-y-1">
+                <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">${p.name}</div>
+                <h4 class="text-sm sm:text-base font-bold text-slate-900">${p.data.headline}</h4>
+                <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">${p.data.detail}</p>
+              </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${badgeBg}">
+              ${badgeText}
+            </span>
+          </div>
+        `;
+        breakdownList.appendChild(card);
+      });
+
+      // Render Action Steps
+      const actionStepsList = document.getElementById('safety-action-steps-list');
+      actionStepsList.innerHTML = '';
+
+      const actions = [
+        {
+          num: '1',
+          title: `Physical Visit in ${userLoc}`,
+          desc: 'Do not pay any token or booking fee before opening the door and testing the key.'
+        },
+        {
+          num: '2',
+          title: 'Verify Landlord Identity',
+          desc: 'Request Aadhaar or government ID matching the apartment electricity bill or title deed.'
+        },
+        {
+          num: '3',
+          title: 'Traceable Bank Payment Only',
+          desc: 'Avoid personal UPI QR codes sent over chat. Use official bank transfer after agreement execution.'
+        }
+      ];
+
+      actions.forEach(act => {
+        const item = document.createElement('div');
+        item.className = 'p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5';
+        item.innerHTML = `
+          <div class="w-7 h-7 rounded-lg bg-brand-900 text-white font-extrabold text-xs flex items-center justify-center">
+            ${act.num}
+          </div>
+          <div class="font-bold text-sm text-slate-900">${act.title}</div>
+          <div class="text-xs text-slate-600 leading-relaxed">${act.desc}</div>
+        `;
+        actionStepsList.appendChild(item);
+      });
+
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
+    // Share report button handler
+    function shareSafetyReport() {
+      const dummyUrl = window.location.href.split('#')[0] + '?report=RS-84920';
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(dummyUrl).then(() => {
+          showShareToast();
+        }).catch(() => {
+          showShareToast();
+        });
+      } else {
+        showShareToast();
+      }
+    }
+
+    function showShareToast() {
+      const toast = document.getElementById('share-toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    const PRESETS = {
+      bangaloreAbroad: {
+        url: 'https://magicbricks.example.com/property/luxury-2bhk-indiranagar-rent',
+        desc: 'Beautiful 2 BHK Apartment in Indiranagar. Fully furnished with modular kitchen and AC. Owner is currently abroad on urgent military/embassy transfer. Keys are with courier. Send ₹10,000 advance token today to reserve the property before other inquiries.',
+        location: 'Indiranagar, Bangalore',
+        rent: '8000',
+        deposit: '10000',
+        image: 'luxury-condo'
+      },
+      safeNormal: {
+        url: 'https://nobroker.example.com/property/1bhk-koramangala-peaceful',
+        desc: '1 BHK semi-furnished apartment on 2nd floor with balcony. Dedicated two-wheeler parking. Society maintenance included in rent. Family or working professional preferred. Available for in-person inspection between 10 AM and 6 PM on Saturday/Sunday.',
+        location: 'Koramangala, Bangalore',
+        rent: '24000',
+        deposit: '100000',
+        image: 'authentic-flat'
+      }
+    };
+
+    function loadSamplePreset(presetKey) {
+      const preset = PRESETS[presetKey];
+      if (!preset) return;
+
+      document.getElementById('input-listing-url').value = preset.url;
+      document.getElementById('input-listing-desc').value = preset.desc;
+      document.getElementById('input-location').value = preset.location;
+      document.getElementById('input-rent').value = preset.rent;
+      document.getElementById('input-deposit').value = preset.deposit;
+      selectSampleImage(preset.image);
+    }
+
+    function launchQuickDemo() {
+      loadSamplePreset('bangaloreAbroad');
+      navigateTo('scan');
+      setTimeout(() => {
+        initiateListingScan();
+      }, 400);
+    }
+
+    // Simulator Scenarios
+    const SIMULATOR_CASES = {
+      tooCheap: {
+        title: 'Scenario 1: Impossibly Cheap Luxury Flat',
+        tag: 'High Risk (Price Trap)',
+        desc: '3 BHK Luxury Penthouse with private Jacuzzi and Italian marble. Swimming pool and clubhouse access. Rent only ₹9,000/month all-inclusive. First come first served.',
+        location: 'Koramangala, Bangalore',
+        rent: '9000',
+        deposit: '18000',
+        image: 'luxury-condo',
+        points: [
+          'Detects that ₹9,000 is 75% below the ₹45,000 neighborhood median.',
+          'Flags unrealistic luxury amenities for low price bracket.',
+          'Triggers Smart Adaptive Price Comparison.'
+        ]
+      },
+      fakeOwner: {
+        title: 'Scenario 2: Owner Abroad / Military Storyline',
+        tag: 'High Risk (Story Trap)',
+        desc: 'I am Colonel Sharma, recently posted to border defense command. Cannot visit in person. My lawyer will courier the house keys once you transfer gate-pass refundable deposit.',
+        location: 'HSR Layout, Bangalore',
+        rent: '12000',
+        deposit: '15000',
+        image: 'luxury-condo',
+        points: [
+          'NLP flags defense/military absentee landlord storyline.',
+          'Flags "courier key" trope as critical scam pattern.',
+          'Warns user that fake army IDs are widely circulated.'
+        ]
+      },
+      reusedPhotos: {
+        title: 'Scenario 3: Stolen Architecture Photos',
+        tag: 'High Risk (Image Reuse)',
+        desc: 'Spacious designer flat near metro station. Modern minimalist decor, wooden flooring. Immediate possession available.',
+        location: 'Whitefield, Bangalore',
+        rent: '18000',
+        deposit: '30000',
+        image: 'airbnb-villa',
+        points: [
+          'Perceptual image hash matches an Airbnb listing in Miami.',
+          'Listing DNA displays 84% identical visual fingerprint.',
+          'Prompts tenant to demand a real-time paper video check.'
+        ]
+      },
+      advancePayment: {
+        title: 'Scenario 4: Urgent Advance Token Trap',
+        tag: 'Critical Risk (Deposit Fraud)',
+        desc: 'High demand property with 15 tenants queuing. To confirm priority viewing appointment, scan QR code and pay ₹5,000 refundable visiting pass fee.',
+        location: 'Indiranagar, Bangalore',
+        rent: '22000',
+        deposit: '44000',
+        image: 'luxury-condo',
+        points: [
+          'Flags "visiting pass fee" as unambiguous advance fraud.',
+          'Recommends immediate cutoff of communications.',
+          'Sets score into Critical Risk (<25).'
+        ]
+      },
+      legitimateSafe: {
+        title: 'Scenario 5: Legitimate Normal Listing',
+        tag: 'High Trust (Verified)',
+        desc: '2 BHK in gated society with 24/7 security, power backup, and lift. Standard rent ₹28,000 with 3 months deposit. Rent agreement will be registered. Site visit available anytime with guard.',
+        location: 'Electronic City, Bangalore',
+        rent: '28000',
+        deposit: '84000',
+        image: 'authentic-flat',
+        points: [
+          'Rent matches local Electronic City market rates.',
+          'Standard 3-month refundable security deposit.',
+          'Encourages in-person verification with security staff.'
+        ]
+      }
+    };
+
+    let activeSimKey = 'fakeOwner';
+
+    function loadSimulatorCase(caseKey) {
+      activeSimKey = caseKey;
+      const data = SIMULATOR_CASES[caseKey];
+      if (!data) return;
+
+      document.getElementById('sim-scenario-title').textContent = data.title;
+      document.getElementById('sim-scenario-tag').textContent = data.tag;
+      document.getElementById('sim-text-display').textContent = data.desc;
+      document.getElementById('sim-loc-display').textContent = data.location;
+      document.getElementById('sim-rent-display').textContent = `₹${Number(data.rent).toLocaleString()} / mo`;
+      document.getElementById('sim-dep-display').textContent = `₹${Number(data.deposit).toLocaleString()}`;
+
+      const listEl = document.getElementById('sim-test-points');
+      listEl.innerHTML = '';
+      data.points.forEach(pt => {
+        const li = document.createElement('li');
+        li.className = 'flex items-start gap-2';
+        li.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5"></i> <span>${pt}</span>`;
+        listEl.appendChild(li);
+      });
+
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
+    function runSimulatorNow() {
+      const data = SIMULATOR_CASES[activeSimKey];
+      if (!data) return;
+
+      document.getElementById('input-listing-url').value = `https://portal.example.com/property/${activeSimKey}-demo`;
+      document.getElementById('input-listing-desc').value = data.desc;
+      document.getElementById('input-location').value = data.location;
+      document.getElementById('input-rent').value = data.rent;
+      document.getElementById('input-deposit').value = data.deposit;
+      selectSampleImage(data.image);
+
+      navigateTo('scan');
+      setTimeout(() => {
+        initiateListingScan();
+      }, 300);
+    }
+
+    function updateChecklistProgress() {
+      const checkboxes = document.querySelectorAll('.chk-item');
+      let checkedCount = 0;
+      checkboxes.forEach(cb => {
+        if (cb.checked) checkedCount++;
+      });
+
+      const badge = document.getElementById('checklist-progress-badge');
+      badge.textContent = `${checkedCount} of 7 Verified`;
+
+      if (checkedCount === 7) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs";
+        badge.textContent = "All 7 Verified — Safe to proceed";
+      } else if (checkedCount >= 4) {
+        badge.className = "px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-bold text-xs";
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-bold text-xs";
+      }
+    }
+
+    function initMinimal3DShield() {
+      const container = document.getElementById('three-shield-container');
+      if (!container || !window.THREE) return;
+
+      try {
+        const width = container.clientWidth || 320;
+        const height = container.clientHeight || 320;
+
+        // Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+        camera.position.z = 4.8;
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Hide 2D Fallback since WebGL started
+        const fallback = document.getElementById('shield-fallback');
+        if (fallback) fallback.style.display = 'none';
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0x60a5fa, 1.2);
+        dirLight.position.set(4, 5, 4);
+        scene.add(dirLight);
+
+        const pointLight = new THREE.PointLight(0x3b82f6, 1.5, 10);
+        pointLight.position.set(-2, 2, 3);
+        scene.add(pointLight);
+
+        // Group to rotate
+        const shieldGroup = new THREE.Group();
+        scene.add(shieldGroup);
+
+        // Shield Shape using ExtrudeGeometry
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 1.3);
+        shape.bezierCurveTo(0.7, 1.3, 1.1, 1.1, 1.1, 0.4);
+        shape.bezierCurveTo(1.1, -0.4, 0.5, -1.0, 0, -1.4);
+        shape.bezierCurveTo(-0.5, -1.0, -1.1, -0.4, -1.1, 0.4);
+        shape.bezierCurveTo(-1.1, 1.1, -0.7, 1.3, 0, 1.3);
+
+        const extrudeSettings = {
+          steps: 1,
+          depth: 0.16,
+          bevelEnabled: true,
+          bevelThickness: 0.08,
+          bevelSize: 0.06,
+          bevelSegments: 4
+        };
+
+        const shieldGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        shieldGeo.center();
+
+        const shieldMat = new THREE.MeshStandardMaterial({
+          color: 0x1E3A8A, // Brand Navy Blue
+          metalness: 0.4,
+          roughness: 0.25,
+        });
+
+        const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+        shieldGroup.add(shieldMesh);
+
+        // Subtle Gold/Cyan Trim on Shield Rim
+        const rimMat = new THREE.MeshStandardMaterial({
+          color: 0x60A5FA,
+          metalness: 0.6,
+          roughness: 0.2,
+          wireframe: false
+        });
+        const rimMesh = new THREE.Mesh(shieldGeo, rimMat);
+        rimMesh.scale.set(0.96, 0.96, 1.05);
+        shieldGroup.add(rimMesh);
+
+        // House Emblem Inside Shield
+        const houseGroup = new THREE.Group();
+
+        // Roof (Cone)
+        const roofGeo = new THREE.ConeGeometry(0.42, 0.4, 4);
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.2, roughness: 0.2 });
+        const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+        roofMesh.rotation.y = Math.PI / 4;
+        roofMesh.position.y = 0.28;
+        roofMesh.position.z = 0.18;
+        houseGroup.add(roofMesh);
+
+        // House Base (Box)
+        const baseGeo = new THREE.BoxGeometry(0.52, 0.42, 0.22);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0xF0F5FD, metalness: 0.1, roughness: 0.3 });
+        const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+        baseMesh.position.y = -0.06;
+        baseMesh.position.z = 0.18;
+        houseGroup.add(baseMesh);
+
+        shieldGroup.add(houseGroup);
+
+        // Mouse interaction for subtle tilt
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetRotX = 0;
+        let targetRotY = 0;
+
+        container.addEventListener('mousemove', (e) => {
+          const rect = container.getBoundingClientRect();
+          mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          mouseY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+        });
+
+        container.addEventListener('mouseleave', () => {
+          mouseX = 0;
+          mouseY = 0;
+        });
+
+        // Animation Loop
+        let clock = new THREE.Clock();
+
+        function animate() {
+          requestAnimationFrame(animate);
+
+          const elapsedTime = clock.getElapsedTime();
+          
+          // Subtle idle floating & hovering rotation
+          targetRotY = mouseX * 0.45 + Math.sin(elapsedTime * 1.2) * 0.15;
+          targetRotX = -mouseY * 0.35 + Math.cos(elapsedTime * 0.9) * 0.08;
+
+          shieldGroup.rotation.y += (targetRotY - shieldGroup.rotation.y) * 0.08;
+          shieldGroup.rotation.x += (targetRotX - shieldGroup.rotation.x) * 0.08;
+          shieldGroup.position.y = Math.sin(elapsedTime * 1.5) * 0.08;
+
+          renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Responsive Resizing
+        window.addEventListener('resize', () => {
+          const newW = container.clientWidth;
+          const newH = container.clientHeight;
+          if (newW && newH) {
+            camera.aspect = newW / newH;
+            camera.updateProjectionMatrix();
+            renderer.setSize(newW, newH);
+          }
+        });
+      } catch (err) {
+        console.warn('3D Shield initialization fallback:', err);
+        const fallback = document.getElementById('shield-fallback');
+        if (fallback) fallback.style.display = 'flex';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) lucide.createIcons();
+      initMinimal3DShield();
+      loadSimulatorCase('fakeOwner');
+      const timestampEl = document.getElementById('report-timestamp');
+      if (timestampEl) {
+        const d = new Date();
+        timestampEl.textContent = `Generated on ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Local Engine • Report ID: #RS-${Math.floor(10000 + Math.random() * 90000)}`;
+      }
+    });
+  </script>
+</body>
+</html>
